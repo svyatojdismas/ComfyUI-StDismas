@@ -22,8 +22,6 @@ class DualKSamplerBase:
     """Shared helpers for all DualKSampler (KSampler) node variants."""
 
     # ComfyUI required attributes
-    RETURN_TYPES = ("LATENT",)
-    RETURN_NAMES = ("LATENT",)
     RETURN_TYPES = ("LATENT", "SIGMAS")
     RETURN_NAMES = ("LATENT", "sigmas")
     FUNCTION = "sample"
@@ -51,7 +49,37 @@ class DualKSamplerBase:
                 },
             ),
             "sigma_shift": (
-@@ -83,56 +83,61 @@ class DualKSamplerBase:
+                "FLOAT",
+                {
+                    "default": 5.0,
+                    "min": 0.0,
+                    "max": 100.0,
+                    "step": 0.01,
+                    "tooltip": "Sigma adjustment applied via ModelSamplingSD3 for model sampling.",
+                },
+            ),
+            "base_cfg": (
+                "FLOAT",
+                {
+                    "default": 3.5,
+                    "min": 0.0,
+                    "max": 100.0,
+                    "step": 0.1,
+                    "tooltip": "CFG scale for Stage 1.",
+                },
+            ),
+            "lightning_cfg": (
+                "FLOAT",
+                {
+                    "default": 1.0,
+                    "min": 0.0,
+                    "max": 100.0,
+                    "step": 0.1,
+                    "tooltip": "CFG scale for Stage 2.",
+                },
+            ),
+            "lightning_steps": (
+                "INT",
                 {
                     "default": 8,
                     "min": 2,
@@ -113,3 +141,62 @@ class DualKSamplerBase:
         if start_at_step >= end_at_step:
             raise ValueError(
                 f"{stage_name}: start_at_step ({start_at_step}) >= end_at_step ({end_at_step})."
+            )
+
+        bare_logger.info("")
+        if stage_info:
+            logger.info("%s: %s", stage_name, stage_info)
+
+        if dry_run:
+            return (latent,)
+
+        advanced_sampler = nodes.KSamplerAdvanced()
+        add_noise_mode = "enable" if add_noise else "disable"
+        return_noise_mode = "enable" if return_with_leftover_noise else "disable"
+
+        try:
+            result = advanced_sampler.sample(
+                model=model,
+                add_noise=add_noise_mode,
+                noise_seed=seed,
+                steps=steps,
+                cfg=cfg,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
+                positive=positive,
+                negative=negative,
+                latent_image=latent,
+                start_at_step=start_at_step,
+                end_at_step=end_at_step,
+                return_with_leftover_noise=return_noise_mode,
+                denoise=1.0,
+            )
+        except comfy.model_management.InterruptProcessingException:
+            raise
+        except Exception as exc:
+            msg = str(exc).strip()
+            if msg:
+                raise RuntimeError(f"{stage_name}: sampling failed - {type(exc).__name__}: {msg}") from exc
+            raise RuntimeError(f"{stage_name}: sampling failed - {type(exc).__name__}") from exc
+
+        return result
+
+    def _patch_models_for_sampling(
+        self, base_model: Any, lightning_model: Any, sigma_shift: float
+    ) -> Tuple[Any, Any]:
+        return core_models.patch_models_with_sigma_shift(base_model, lightning_model, sigma_shift)
+
+    # -------------------------
+    # Minimal validation helpers
+    # -------------------------
+    def _validate_basic_parameters(
+        self, lightning_steps: int, lightning_start: int, base_steps: int, base_quality_threshold: int
+    ) -> None:
+        if base_quality_threshold < 1:
+            raise ValueError("base_quality_threshold must be >= 1")
+        if lightning_steps < 2:
+            raise ValueError("lightning_steps must be >= 2")
+        if not (0 <= lightning_start < lightning_steps):
+            raise ValueError("lightning_start must be between 0 and lightning_steps-1")
+        if base_steps < -1:
+            raise ValueError("base_steps must be -1 (auto) or >= 0")
