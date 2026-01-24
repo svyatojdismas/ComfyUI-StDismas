@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import comfy.model_management
 import nodes
@@ -22,8 +22,8 @@ class DualKSamplerBase:
     """Shared helpers for all DualKSampler (KSampler) node variants."""
 
     # ComfyUI required attributes
-    RETURN_TYPES = ("LATENT",)
-    RETURN_NAMES = ("LATENT",)
+    RETURN_TYPES = ("LATENT", "SIGMAS")
+    RETURN_NAMES = ("LATENT", "sigmas")
     FUNCTION = "sample"
     CATEGORY = "DualKSampler/sampling"
 
@@ -105,11 +105,16 @@ class DualKSamplerBase:
         stage1_info: str,
         stage2_info: str,
         base_calculation_info: str = "",
+        switch_info: str = "",
     ) -> None:
         lines = []
         if base_calculation_info:
             lines.append("Calculations:")
             lines.append(f"• {core_logging.format_base_calculation_compact(base_calculation_info)}")
+            lines.append("")
+        if switch_info:
+            lines.append("Switching:")
+            lines.append(f"• {switch_info}")
             lines.append("")
         lines.extend(["Stage Configuration:", f"• {stage1_info}", f"• {stage2_info}"])
         core_notifications.send_dry_run_notification("\n".join(lines))
@@ -131,7 +136,7 @@ class DualKSamplerBase:
         return_with_leftover_noise: bool,
         dry_run: bool = False,
         stage_name: str = "Sampler",
-        stage_info: str | None = None,
+        stage_info: Optional[str] = None,
     ) -> Tuple[Dict[str, torch.Tensor], ...]:
         if start_at_step >= end_at_step:
             raise ValueError(
