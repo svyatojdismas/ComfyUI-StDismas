@@ -414,22 +414,22 @@ class DualKSamplerAdvanced(DualKSamplerAdvancedAlt):
         optional.update(
             {
                 "switch_boundary": (
-                "FLOAT",
-                {
-                    "default": DEFAULT_BOUNDARY_T2V,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.001,
-                    "tooltip": "Boundary used for boundary-based strategies.",
-                },
-            ),
+                    "FLOAT",
+                    {
+                        "default": DEFAULT_BOUNDARY_T2V,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.001,
+                        "tooltip": "Boundary used for boundary-based strategies.",
+                    },
+                ),
                 "dry_run": (
-                "BOOLEAN",
-                {
-                    "default": False,
-                    "tooltip": "Validate & show resolved stage ranges (toast). Does not sample.",
-                },
-            ),
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "Validate & show resolved stage ranges (toast). Does not sample.",
+                    },
+                ),
             }
         )
 
