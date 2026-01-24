@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import comfy.model_management
 import nodes
@@ -136,7 +136,7 @@ class DualKSamplerBase:
         return_with_leftover_noise: bool,
         dry_run: bool = False,
         stage_name: str = "Sampler",
-        stage_info: str | None = None,
+        stage_info: Optional[str] = None,
     ) -> Tuple[Dict[str, torch.Tensor], ...]:
         if start_at_step >= end_at_step:
             raise ValueError(
