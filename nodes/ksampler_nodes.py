@@ -15,7 +15,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "DualKSamplerCore": "DualKSampler (Core KSampler) (StDismas)",
-    "DualKSamplerCoreAdvanced": "DualKSampler (Core KSampler Advanced) (StDismas)",
-    "DualKSamplerCoreAdvancedAlt": "DualKSampler (Core KSampler Advanced Alt) (StDismas)",
+    "DualKSamplerCore": "DualKsampler Simple (StDismas)",
+    "DualKSamplerCoreAdvanced": "DualKsampler Advanced (StDismas)",
+    "DualKSamplerCoreAdvancedAlt": "DualKsampler Advanced (Static UI) (StDismas)",
 }

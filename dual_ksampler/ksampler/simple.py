@@ -22,6 +22,9 @@ class DualKSampler(DualKSamplerAdvancedAlt):
         "Auto base alignment available via base_steps=-1."
     )
 
+    RETURN_TYPES = ("LATENT",)
+    RETURN_NAMES = ("LATENT",)
+
     @classmethod
     def INPUT_TYPES(cls) -> Dict[str, Any]:
         base = cls._get_base_input_types()
@@ -116,7 +119,7 @@ class DualKSampler(DualKSamplerAdvancedAlt):
         dry_run: bool = False,
     ):
         # Delegate to AdvancedAlt with shared sampler/scheduler.
-        return super().sample(
+        return (super().sample(
             base_model=base_model,
             lightning_model=lightning_model,
             positive=positive,
@@ -134,5 +137,7 @@ class DualKSampler(DualKSamplerAdvancedAlt):
             lightning_start=lightning_start,
             lightning_sampler=sampler_name,
             lightning_scheduler=scheduler,
+            switch_strategy="50% of steps",
+            switch_boundary=0.875,
             dry_run=dry_run,
-        )
+        )[0],)
