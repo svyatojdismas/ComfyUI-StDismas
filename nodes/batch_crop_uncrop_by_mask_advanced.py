@@ -90,6 +90,116 @@ def _resize_mask(mask_hw: torch.Tensor, out_w: int, out_h: int) -> torch.Tensor:
     return x.squeeze(0).squeeze(0)
 
 
+def _crop_with_padding_2d(mask_hw: torch.Tensor, x0: int, y0: int, out_w: int, out_h: int) -> torch.Tensor:
+    """
+    mask_hw: (H,W)
+    returns (out_h,out_w) with zero padding when crop exceeds bounds
+    """
+    H, W = mask_hw.shape
+    x1 = x0 + out_w
+    y1 = y0 + out_h
+
+    src_x0 = max(0, x0)
+    src_y0 = max(0, y0)
+    src_x1 = min(W, x1)
+    src_y1 = min(H, y1)
+
+    out = torch.zeros((out_h, out_w), device=mask_hw.device, dtype=mask_hw.dtype)
+    if src_x1 <= src_x0 or src_y1 <= src_y0:
+        return out
+
+    dst_x0 = src_x0 - x0
+    dst_y0 = src_y0 - y0
+    dst_x1 = dst_x0 + (src_x1 - src_x0)
+    dst_y1 = dst_y0 + (src_y1 - src_y0)
+
+    out[dst_y0:dst_y1, dst_x0:dst_x1] = mask_hw[src_y0:src_y1, src_x0:src_x1]
+    return out
+
+
+def _crop_with_padding_3d(img_hwc: torch.Tensor, x0: int, y0: int, out_w: int, out_h: int) -> torch.Tensor:
+    """
+    img_hwc: (H,W,C)
+    returns (out_h,out_w,C) with zero padding when crop exceeds bounds
+    """
+    H, W, C = img_hwc.shape
+    x1 = x0 + out_w
+    y1 = y0 + out_h
+
+    src_x0 = max(0, x0)
+    src_y0 = max(0, y0)
+    src_x1 = min(W, x1)
+    src_y1 = min(H, y1)
+
+    out = torch.zeros((out_h, out_w, C), device=img_hwc.device, dtype=img_hwc.dtype)
+    if src_x1 <= src_x0 or src_y1 <= src_y0:
+        return out
+
+    dst_x0 = src_x0 - x0
+    dst_y0 = src_y0 - y0
+    dst_x1 = dst_x0 + (src_x1 - src_x0)
+    dst_y1 = dst_y0 + (src_y1 - src_y0)
+
+    out[dst_y0:dst_y1, dst_x0:dst_x1, :] = img_hwc[src_y0:src_y1, src_x0:src_x1, :]
+    return out
+
+
+def _paste_with_padding_2d(canvas_hw: torch.Tensor, patch_hw: torch.Tensor, x0: int, y0: int) -> torch.Tensor:
+    """
+    Paste patch into canvas at (x0,y0). Returns canvas.
+    """
+    H, W = canvas_hw.shape
+    ph, pw = patch_hw.shape
+
+    x1 = x0 + pw
+    y1 = y0 + ph
+
+    dst_x0 = max(0, x0)
+    dst_y0 = max(0, y0)
+    dst_x1 = min(W, x1)
+    dst_y1 = min(H, y1)
+
+    if dst_x1 <= dst_x0 or dst_y1 <= dst_y0:
+        return canvas_hw
+
+    src_x0 = dst_x0 - x0
+    src_y0 = dst_y0 - y0
+    src_x1 = src_x0 + (dst_x1 - dst_x0)
+    src_y1 = src_y0 + (dst_y1 - dst_y0)
+
+    canvas_hw[dst_y0:dst_y1, dst_x0:dst_x1] = patch_hw[src_y0:src_y1, src_x0:src_x1]
+    return canvas_hw
+
+
+def _paste_with_padding_3d(canvas_hwc: torch.Tensor, patch_hwc: torch.Tensor, x0: int, y0: int) -> torch.Tensor:
+    """
+    Paste patch into canvas at (x0,y0). Returns canvas.
+    """
+    H, W, C = canvas_hwc.shape
+    ph, pw, pc = patch_hwc.shape
+    if pc != C:
+        raise ValueError("Patch channels mismatch")
+
+    x1 = x0 + pw
+    y1 = y0 + ph
+
+    dst_x0 = max(0, x0)
+    dst_y0 = max(0, y0)
+    dst_x1 = min(W, x1)
+    dst_y1 = min(H, y1)
+
+    if dst_x1 <= dst_x0 or dst_y1 <= dst_y0:
+        return canvas_hwc
+
+    src_x0 = dst_x0 - x0
+    src_y0 = dst_y0 - y0
+    src_x1 = src_x0 + (dst_x1 - dst_x0)
+    src_y1 = src_y0 + (dst_y1 - dst_y0)
+
+    canvas_hwc[dst_y0:dst_y1, dst_x0:dst_x1, :] = patch_hwc[src_y0:src_y1, src_x0:src_x1, :]
+    return canvas_hwc
+
+
 def _feather_alpha(alpha_hw: torch.Tensor, feather_px: int) -> torch.Tensor:
     """
     alpha_hw: (h,w) in [0,1]
@@ -130,9 +240,9 @@ class BatchImageCropByMaskAdvanced_StDismas:
     """
     ЛОГИКА КРОПА — та же идея, что и раньше:
     - bbox по маске + padding
-    - гарантируем, что bbox (с padding) оказывается внутри кроп-окна
-    - если bbox+padding больше чем запрошенный width/height, расширяем окно (в пределах исходника)
-      и потом ресайзим до (width,height), чтобы bbox гарантированно попадал внутрь.
+    - масштабируем изображение (uniform) так, чтобы bbox+padding полностью помещался
+      в целевой размер width/height без искажений (zoom in/out).
+    - кроп вырезается в масштабированном пространстве, при выходе за границы добавляется черный pad.
     """
 
     def crop(self, images, masks, width, height, padding):
@@ -150,26 +260,30 @@ class BatchImageCropByMaskAdvanced_StDismas:
             mask_i = masks[i]
             bb = _mask_bbox(mask_i)
             if bb is None:
-                # пустая маска: возвращаем просто центр-кроп (детерминированно)
-                win_w = min(width, W)
-                win_h = min(height, H)
-                x0 = max(0, (W - win_w) // 2)
-                y0 = max(0, (H - win_h) // 2)
-                x1 = x0 + win_w
-                y1 = y0 + win_h
+                # пустая маска: центрируем кроп без искажений, добавляя паддинг если нужно
+                scale = 1.0
+                scaled_w = W
+                scaled_h = H
+                cx_s = W * 0.5
+                cy_s = H * 0.5
+                crop_x0 = int(round(cx_s - width / 2))
+                crop_y0 = int(round(cy_s - height / 2))
 
-                crop_img = images[i, y0:y1, x0:x1, :]
-                crop_m = mask_i[y0:y1, x0:x1]
-
-                crop_img = _resize_image(crop_img, width, height)
-                crop_m = _resize_mask(crop_m, width, height)
+                crop_img = _crop_with_padding_3d(images[i], crop_x0, crop_y0, width, height)
+                crop_m = _crop_with_padding_2d(mask_i, crop_x0, crop_y0, width, height)
 
                 out_imgs.append(crop_img)
                 out_masks.append(crop_m)
                 out_bboxes.append({
-                    "x0": int(x0), "y0": int(y0), "x1": int(x1), "y1": int(y1),
-                    "win_w": int(win_w), "win_h": int(win_h),
-                    "out_w": int(width), "out_h": int(height),
+                    "scale": float(scale),
+                    "scaled_w": int(scaled_w),
+                    "scaled_h": int(scaled_h),
+                    "crop_x0": int(crop_x0),
+                    "crop_y0": int(crop_y0),
+                    "crop_w": int(width),
+                    "crop_h": int(height),
+                    "orig_w": int(W),
+                    "orig_h": int(H),
                 })
                 continue
 
@@ -184,61 +298,43 @@ class BatchImageCropByMaskAdvanced_StDismas:
             bbox_w = max_xp - min_xp
             bbox_h = max_yp - min_yp
 
-            # start with requested crop window
-            win_w = min(width, W)
-            win_h = min(height, H)
+            bbox_w = max(1, bbox_w)
+            bbox_h = max(1, bbox_h)
 
-            # if bbox doesn't fit - expand window in original space (then we'll resize to output)
-            win_w = min(W, max(win_w, bbox_w))
-            win_h = min(H, max(win_h, bbox_h))
+            # scale uniformly so bbox+padding fully fits in target size
+            scale = min(width / bbox_w, height / bbox_h)
+            scale = max(scale, 1e-6)
 
-            # initial center around padded bbox center
+            scaled_w = max(1, int(round(W * scale)))
+            scaled_h = max(1, int(round(H * scale)))
+
+            scaled_img = _resize_image(images[i], scaled_w, scaled_h)
+            scaled_mask = _resize_mask(mask_i, scaled_w, scaled_h)
+
             cx = (min_xp + max_xp) * 0.5
             cy = (min_yp + max_yp) * 0.5
+            cx_s = cx * scale
+            cy_s = cy * scale
 
-            x0 = int(round(cx - win_w / 2))
-            y0 = int(round(cy - win_h / 2))
+            crop_x0 = int(round(cx_s - width / 2))
+            crop_y0 = int(round(cy_s - height / 2))
 
-            # clamp to image bounds
-            x0 = max(0, min(x0, W - win_w))
-            y0 = max(0, min(y0, H - win_h))
-            x1 = x0 + win_w
-            y1 = y0 + win_h
-
-            # enforce bbox fully inside window (safety adjustments)
-            if min_xp < x0:
-                x0 = min_xp
-                x0 = max(0, min(x0, W - win_w))
-                x1 = x0 + win_w
-            if max_xp > x1:
-                x0 = max_xp - win_w
-                x0 = max(0, min(x0, W - win_w))
-                x1 = x0 + win_w
-
-            if min_yp < y0:
-                y0 = min_yp
-                y0 = max(0, min(y0, H - win_h))
-                y1 = y0 + win_h
-            if max_yp > y1:
-                y0 = max_yp - win_h
-                y0 = max(0, min(y0, H - win_h))
-                y1 = y0 + win_h
-
-            # crop in original space
-            crop_img = images[i, y0:y1, x0:x1, :]
-            crop_m = mask_i[y0:y1, x0:x1]
-
-            # resize to requested output size (width,height)
-            crop_img = _resize_image(crop_img, width, height)
-            crop_m = _resize_mask(crop_m, width, height)
+            crop_img = _crop_with_padding_3d(scaled_img, crop_x0, crop_y0, width, height)
+            crop_m = _crop_with_padding_2d(scaled_mask, crop_x0, crop_y0, width, height)
 
             out_imgs.append(crop_img)
             out_masks.append(crop_m)
 
             out_bboxes.append({
-                "x0": int(x0), "y0": int(y0), "x1": int(x1), "y1": int(y1),
-                "win_w": int(win_w), "win_h": int(win_h),
-                "out_w": int(width), "out_h": int(height),
+                "scale": float(scale),
+                "scaled_w": int(scaled_w),
+                "scaled_h": int(scaled_h),
+                "crop_x0": int(crop_x0),
+                "crop_y0": int(crop_y0),
+                "crop_w": int(width),
+                "crop_h": int(height),
+                "orig_w": int(W),
+                "orig_h": int(H),
             })
 
         out_imgs = torch.stack(out_imgs, dim=0).to(device=device, dtype=dtype)
@@ -302,79 +398,134 @@ class BatchImageUncropByMaskAdvanced_StDismas:
 
         for i in range(B):
             info = bboxes_use[i]
-            x0 = int(info["x0"]); y0 = int(info["y0"]); x1 = int(info["x1"]); y1 = int(info["y1"])
-            win_w = int(info.get("win_w", x1 - x0))
-            win_h = int(info.get("win_h", y1 - y0))
+            if "scale" in info:
+                scale = float(info.get("scale", 1.0))
+                scaled_w = int(info.get("scaled_w", int(round(W * scale))))
+                scaled_h = int(info.get("scaled_h", int(round(H * scale))))
+                crop_x0 = int(info.get("crop_x0", 0))
+                crop_y0 = int(info.get("crop_y0", 0))
+                crop_w = int(info.get("crop_w", Wc))
+                crop_h = int(info.get("crop_h", Hc))
 
-            # window sanity
-            x0 = max(0, min(x0, W))
-            x1 = max(0, min(x1, W))
-            y0 = max(0, min(y0, H))
-            y1 = max(0, min(y1, H))
+                crop_w = max(1, crop_w)
+                crop_h = max(1, crop_h)
 
-            win_w = max(1, x1 - x0)
-            win_h = max(1, y1 - y0)
+                # rescale patch within crop window if needed
+                tgt_w = max(1, int(round(crop_w * float(crop_rescale))))
+                tgt_h = max(1, int(round(crop_h * float(crop_rescale))))
 
-            # rescale patch within window if needed
-            tgt_w = max(1, int(round(win_w * float(crop_rescale))))
-            tgt_h = max(1, int(round(win_h * float(crop_rescale))))
+                patch = _resize_image(cropped_images[i], tgt_w, tgt_h)
+                if use_square_mask:
+                    alpha = torch.ones((tgt_h, tgt_w), device=device, dtype=dtype)
+                else:
+                    alpha = _resize_mask(cropped_masks[i], tgt_w, tgt_h).to(device=device, dtype=dtype)
 
-            # resize cropped image/mask from (Wc,Hc) to (tgt_w,tgt_h)
-            patch = _resize_image(cropped_images[i], tgt_w, tgt_h)
-            if use_square_mask:
-                alpha = torch.ones((tgt_h, tgt_w), device=device, dtype=dtype)
-            else:
-                alpha = _resize_mask(cropped_masks[i], tgt_w, tgt_h).to(device=device, dtype=dtype)
+                # center patch into crop-sized canvas
+                crop_patch = torch.zeros((crop_h, crop_w, 3), device=device, dtype=dtype)
+                crop_alpha = torch.zeros((crop_h, crop_w), device=device, dtype=dtype)
 
-            # border blending: interpret 0..1 into a practical pixel feather width
-            # 0.25 -> ~8px, 1.0 -> ~32px
-            feather_px = int(round(float(border_blending) * 32.0))
-            alpha = _feather_alpha(alpha, feather_px)
-
-            # paste coords (centered in the window if rescaled)
-            # base window is [x0:x1, y0:y1]
-            # if tgt bigger than window -> clamp & center crop
-            dst_x0, dst_y0 = x0, y0
-            dst_x1, dst_y1 = x1, y1
-
-            # If rescaled patch differs from window size, we center it.
-            if tgt_w != win_w or tgt_h != win_h:
-                # compute centered placement inside the window bounds
-                place_w = min(tgt_w, win_w)
-                place_h = min(tgt_h, win_h)
-
-                # crop patch if larger
+                place_w = min(tgt_w, crop_w)
+                place_h = min(tgt_h, crop_h)
                 px0 = max(0, (tgt_w - place_w) // 2)
                 py0 = max(0, (tgt_h - place_h) // 2)
+
                 patch = patch[py0:py0 + place_h, px0:px0 + place_w, :]
                 alpha = alpha[py0:py0 + place_h, px0:px0 + place_w]
 
-                # place into window centered
-                ox = (win_w - place_w) // 2
-                oy = (win_h - place_h) // 2
-                dst_x0 = x0 + ox
-                dst_y0 = y0 + oy
-                dst_x1 = dst_x0 + place_w
-                dst_y1 = dst_y0 + place_h
+                ox = (crop_w - place_w) // 2
+                oy = (crop_h - place_h) // 2
+                crop_patch[oy:oy + place_h, ox:ox + place_w, :] = patch
+                crop_alpha[oy:oy + place_h, ox:ox + place_w] = alpha
 
-            # final safety clamp
-            dst_x0 = max(0, min(dst_x0, W))
-            dst_x1 = max(0, min(dst_x1, W))
-            dst_y0 = max(0, min(dst_y0, H))
-            dst_y1 = max(0, min(dst_y1, H))
+                scaled_patch = torch.zeros((scaled_h, scaled_w, 3), device=device, dtype=dtype)
+                scaled_alpha = torch.zeros((scaled_h, scaled_w), device=device, dtype=dtype)
 
-            ph = dst_y1 - dst_y0
-            pw = dst_x1 - dst_x0
-            if ph <= 0 or pw <= 0:
-                continue
+                scaled_patch = _paste_with_padding_3d(scaled_patch, crop_patch, crop_x0, crop_y0)
+                scaled_alpha = _paste_with_padding_2d(scaled_alpha, crop_alpha, crop_x0, crop_y0)
 
-            patch = patch[:ph, :pw, :]
-            alpha = alpha[:ph, :pw]
+                # resize back to original resolution
+                patch_full = _resize_image(scaled_patch, W, H)
+                alpha_full = _resize_mask(scaled_alpha, W, H).to(device=device, dtype=dtype)
 
-            base = out[i, dst_y0:dst_y1, dst_x0:dst_x1, :]
-            alpha3 = alpha.unsqueeze(-1).expand(-1, -1, 3)
+                feather_px = int(round(float(border_blending) * 32.0))
+                alpha_full = _feather_alpha(alpha_full, feather_px)
 
-            out[i, dst_y0:dst_y1, dst_x0:dst_x1, :] = base * (1.0 - alpha3) + patch * alpha3
+                alpha3 = alpha_full.unsqueeze(-1).expand(-1, -1, 3)
+                out[i] = out[i] * (1.0 - alpha3) + patch_full * alpha3
+            else:
+                x0 = int(info["x0"]); y0 = int(info["y0"]); x1 = int(info["x1"]); y1 = int(info["y1"])
+                win_w = int(info.get("win_w", x1 - x0))
+                win_h = int(info.get("win_h", y1 - y0))
+
+                # window sanity
+                x0 = max(0, min(x0, W))
+                x1 = max(0, min(x1, W))
+                y0 = max(0, min(y0, H))
+                y1 = max(0, min(y1, H))
+
+                win_w = max(1, x1 - x0)
+                win_h = max(1, y1 - y0)
+
+                # rescale patch within window if needed
+                tgt_w = max(1, int(round(win_w * float(crop_rescale))))
+                tgt_h = max(1, int(round(win_h * float(crop_rescale))))
+
+                # resize cropped image/mask from (Wc,Hc) to (tgt_w,tgt_h)
+                patch = _resize_image(cropped_images[i], tgt_w, tgt_h)
+                if use_square_mask:
+                    alpha = torch.ones((tgt_h, tgt_w), device=device, dtype=dtype)
+                else:
+                    alpha = _resize_mask(cropped_masks[i], tgt_w, tgt_h).to(device=device, dtype=dtype)
+
+                # border blending: interpret 0..1 into a practical pixel feather width
+                # 0.25 -> ~8px, 1.0 -> ~32px
+                feather_px = int(round(float(border_blending) * 32.0))
+                alpha = _feather_alpha(alpha, feather_px)
+
+                # paste coords (centered in the window if rescaled)
+                # base window is [x0:x1, y0:y1]
+                # if tgt bigger than window -> clamp & center crop
+                dst_x0, dst_y0 = x0, y0
+                dst_x1, dst_y1 = x1, y1
+
+                # If rescaled patch differs from window size, we center it.
+                if tgt_w != win_w or tgt_h != win_h:
+                    # compute centered placement inside the window bounds
+                    place_w = min(tgt_w, win_w)
+                    place_h = min(tgt_h, win_h)
+
+                    # crop patch if larger
+                    px0 = max(0, (tgt_w - place_w) // 2)
+                    py0 = max(0, (tgt_h - place_h) // 2)
+                    patch = patch[py0:py0 + place_h, px0:px0 + place_w, :]
+                    alpha = alpha[py0:py0 + place_h, px0:px0 + place_w]
+
+                    # place into window centered
+                    ox = (win_w - place_w) // 2
+                    oy = (win_h - place_h) // 2
+                    dst_x0 = x0 + ox
+                    dst_y0 = y0 + oy
+                    dst_x1 = dst_x0 + place_w
+                    dst_y1 = dst_y0 + place_h
+
+                # final safety clamp
+                dst_x0 = max(0, min(dst_x0, W))
+                dst_x1 = max(0, min(dst_x1, W))
+                dst_y0 = max(0, min(dst_y0, H))
+                dst_y1 = max(0, min(dst_y1, H))
+
+                ph = dst_y1 - dst_y0
+                pw = dst_x1 - dst_x0
+                if ph <= 0 or pw <= 0:
+                    continue
+
+                patch = patch[:ph, :pw, :]
+                alpha = alpha[:ph, :pw]
+
+                base = out[i, dst_y0:dst_y1, dst_x0:dst_x1, :]
+                alpha3 = alpha.unsqueeze(-1).expand(-1, -1, 3)
+
+                out[i, dst_y0:dst_y1, dst_x0:dst_x1, :] = base * (1.0 - alpha3) + patch * alpha3
 
         return (out.to(device=device, dtype=dtype),)
 
