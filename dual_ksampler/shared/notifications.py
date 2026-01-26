@@ -12,7 +12,7 @@ Toast notifications are used to communicate important information to users:
 """
 
 import os
-from typing import Any
+from typing import Any, Dict, Optional
 
 # Toast notification durations (milliseconds)
 TOAST_LIFE_OVERLAP = 8000  # Overlap warnings
@@ -35,7 +35,7 @@ def send_toast_notification(
     severity: str,
     summary: str,
     detail: str,
-    life: int | None = None,
+    life: Optional[int] = None,
 ) -> bool:
     """Send toast notification to ComfyUI UI via PromptServer.
 
@@ -66,7 +66,7 @@ def send_toast_notification(
     """
     try:
         if PromptServer and hasattr(PromptServer, "instance") and PromptServer.instance:
-            message_data: dict[str, Any] = {
+            message_data: Dict[str, Any] = {
                 "severity": severity,
                 "summary": summary,
                 "detail": detail,

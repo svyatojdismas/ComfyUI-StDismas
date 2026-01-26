@@ -14,7 +14,7 @@ returns a cloned/modified model instance.
 
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any, List, Optional, Tuple
 
 import torch
 
@@ -57,7 +57,7 @@ def patch_models_with_sigma_shift(
     return patched_base, patched_lightning
 
 
-def _resolve_sigmas(model: Any, scheduler: str, steps: int) -> list[float] | None:
+def _resolve_sigmas(model: Any, scheduler: str, steps: int) -> Optional[List[float]]:
     """Resolve the sigma schedule for a model/scheduler pair."""
     import comfy.model_management
     import comfy.samplers
@@ -134,7 +134,7 @@ def calculate_perfect_shift_for_step(
     initial_shift: float,
     max_iters: int = 12,
     tolerance: float = 1e-4,
-) -> tuple[float, str]:
+) -> Tuple[float, str]:
     """Attempt to refine sigma_shift so sigma at target_step matches target_sigma."""
     if ModelSamplingSD3 is None:
         return initial_shift, "ModelSamplingSD3 unavailable"

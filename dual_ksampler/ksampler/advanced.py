@@ -7,7 +7,7 @@ Derived from the native KSampler implementation in ComfyUI-TripleKSampler.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import comfy.model_management
 import comfy.samplers
@@ -48,8 +48,8 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
     def INPUT_TYPES(cls) -> Dict[str, Any]:
         # IMPORTANT: ComfyUI renders widgets in the insertion order of the
         # ``required`` dict. We match TripleKSampler's layout:
-        # sigma_shift → base_quality_threshold → base_steps → base_cfg → base sampler/scheduler →
-        # lightning_start → lightning_steps → lightning_cfg → lightning sampler/scheduler → dry_run.
+        # sigma_shift -> base_quality_threshold -> base_steps -> base_cfg -> base sampler/scheduler ->
+        # lightning_start -> lightning_steps -> lightning_cfg -> lightning sampler/scheduler -> dry_run.
         base = cls._get_base_input_types()
 
         required: Dict[str, Any] = {
@@ -215,7 +215,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
             )
             if refined_shift != sigma_shift:
                 sigma_shift_final = refined_shift
-                switch_info += f" [Refined shift: {sigma_shift:.2f}→{refined_shift:.2f}]"
+                switch_info += f" [Refined shift: {sigma_shift:.2f}->{refined_shift:.2f}]"
                 logger.info("Sigma shift refinement: %s", refine_msg)
             elif refine_msg != "already aligned":
                 logger.info("Sigma shift refinement: %s", refine_msg)
@@ -350,7 +350,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         lightning_start: int,
         lightning_model: Any,
         lightning_scheduler: str,
-    ) -> tuple[int, str]:
+    ) -> Tuple[int, str]:
         switch_step_resolved = int(max(0, min(lightning_steps - 1, lightning_start)))
         boundary = None
         fallback_step = max(0, min(lightning_steps - 1, lightning_steps // 2))
@@ -375,11 +375,11 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         if boundary is not None:
             switch_info = (
                 f"Model switching: {switch_strategy.replace(' (refined)', '')} "
-                f"(boundary = {boundary:.3f}) → switch at step {switch_step_resolved} of {lightning_steps}"
+                f"(boundary = {boundary:.3f}) -> switch at step {switch_step_resolved} of {lightning_steps}"
             )
         else:
             switch_info = (
-                f"Model switching: {switch_strategy} → switch at step {switch_step_resolved} of {lightning_steps}"
+                f"Model switching: {switch_strategy} -> switch at step {switch_step_resolved} of {lightning_steps}"
             )
 
         logger.info(switch_info)
