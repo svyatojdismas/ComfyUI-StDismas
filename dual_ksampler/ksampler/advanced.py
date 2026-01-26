@@ -181,8 +181,8 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         lightning_sampler: str,
         lightning_scheduler: str,
         switch_strategy: str,
-        switch_step: Optional[int] = None,
         switch_boundary: float,
+        switch_step: Optional[int] = None,
         dry_run: bool = False,
     ):
         # Patch models with sigma shift (needed for boundary strategies)
