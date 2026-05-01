@@ -11,6 +11,7 @@ The algorithm uses three methods in priority order:
 """
 
 import math
+from typing import Tuple
 
 # Algorithm constants
 SEARCH_LIMIT_MULTIPLIER = 1  # Additional steps to search beyond threshold for alignment
@@ -18,7 +19,7 @@ SEARCH_LIMIT_MULTIPLIER = 1  # Additional steps to search beyond threshold for a
 
 def calculate_perfect_alignment(
     base_quality_threshold: int, lightning_start: int, lightning_steps: int
-) -> tuple[int, int, str]:
+) -> Tuple[int, int, str]:
     """Calculate base_steps and total_base_steps for perfect alignment.
 
     Perfect alignment ensures Stage 1 end exactly matches Stage 2 start in the

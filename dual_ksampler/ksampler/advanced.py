@@ -7,7 +7,7 @@ Derived from the native KSampler implementation in ComfyUI-TripleKSampler.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import comfy.model_management
 import comfy.samplers
@@ -48,8 +48,8 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
     def INPUT_TYPES(cls) -> Dict[str, Any]:
         # IMPORTANT: ComfyUI renders widgets in the insertion order of the
         # ``required`` dict. We match TripleKSampler's layout:
-        # sigma_shift → base_quality_threshold → base_steps → base_cfg → base sampler/scheduler →
-        # lightning_start → lightning_steps → lightning_cfg → lightning sampler/scheduler → dry_run.
+        # sigma_shift -> base_quality_threshold -> base_steps -> base_cfg -> base sampler/scheduler ->
+        # lightning_start -> lightning_steps -> lightning_cfg -> lightning sampler/scheduler -> dry_run.
         base = cls._get_base_input_types()
 
         required: Dict[str, Any] = {
@@ -123,7 +123,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
             "switch_strategy": (
                 SWITCH_STRATEGIES,
                 {
-                    "default": "Manual switch step",
+                    "default": "50% of steps",
                     "tooltip": "How to pick the model switch point. Refined modes auto-tune sigma_shift for boundary alignment.",
                 },
             ),
@@ -137,16 +137,6 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
                     "Use -1 to fall back to lightning_start.",
                 },
             ),
-            "switch_boundary": (
-                "FLOAT",
-                {
-                    "default": DEFAULT_BOUNDARY_T2V,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.001,
-                    "tooltip": "Boundary used for boundary-based strategies.",
-                },
-            ),
             "dry_run": (
                 "BOOLEAN",
                 {
@@ -156,9 +146,17 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
             ),
         }
         optional: Dict[str, Any] = {
-            "switch_step": required.pop("switch_step"),
+            "switch_boundary": (
+                "FLOAT",
+                {
+                    "default": DEFAULT_BOUNDARY_T2V,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.001,
+                    "tooltip": "Boundary used for Manual boundary and Manual boundary (refined).",
+                },
+            ),
         }
-
         return {"required": required, "optional": optional}
 
     def sample(
@@ -181,7 +179,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         lightning_sampler: str,
         lightning_scheduler: str,
         switch_strategy: str,
-        switch_boundary: float,
+        switch_boundary: Optional[float] = None,
         switch_step: Optional[int] = None,
         dry_run: bool = False,
     ):
@@ -191,10 +189,11 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         )
 
         # Resolve switch step from strategy (used as effective lightning_start)
+        boundary_value = DEFAULT_BOUNDARY_T2V if switch_boundary is None else switch_boundary
         switch_step_resolved, switch_info = self._resolve_switch_strategy(
             switch_strategy=switch_strategy,
             switch_step=-1 if switch_step is None else switch_step,
-            switch_boundary=switch_boundary,
+            switch_boundary=boundary_value,
             lightning_steps=lightning_steps,
             lightning_start=lightning_start,
             lightning_model=patched_lightning,
@@ -204,7 +203,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         sigma_shift_final = sigma_shift
         if self._is_refined_strategy(switch_strategy):
             target_boundary = self._get_boundary_for_strategy(
-                switch_strategy, switch_boundary
+                switch_strategy, boundary_value
             )
             refined_shift, refine_msg = core_models.calculate_perfect_shift_for_step(
                 model=lightning_model,
@@ -216,7 +215,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
             )
             if refined_shift != sigma_shift:
                 sigma_shift_final = refined_shift
-                switch_info += f" [Refined shift: {sigma_shift:.2f}→{refined_shift:.2f}]"
+                switch_info += f" [Refined shift: {sigma_shift:.2f}->{refined_shift:.2f}]"
                 logger.info("Sigma shift refinement: %s", refine_msg)
             elif refine_msg != "already aligned":
                 logger.info("Sigma shift refinement: %s", refine_msg)
@@ -351,7 +350,7 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         lightning_start: int,
         lightning_model: Any,
         lightning_scheduler: str,
-    ) -> tuple[int, str]:
+    ) -> Tuple[int, str]:
         switch_step_resolved = int(max(0, min(lightning_steps - 1, lightning_start)))
         boundary = None
         fallback_step = max(0, min(lightning_steps - 1, lightning_steps // 2))
@@ -376,11 +375,11 @@ class DualKSamplerAdvancedAlt(DualKSamplerBase):
         if boundary is not None:
             switch_info = (
                 f"Model switching: {switch_strategy.replace(' (refined)', '')} "
-                f"(boundary = {boundary:.3f}) → switch at step {switch_step_resolved} of {lightning_steps}"
+                f"(boundary = {boundary:.3f}) -> switch at step {switch_step_resolved} of {lightning_steps}"
             )
         else:
             switch_info = (
-                f"Model switching: {switch_strategy} → switch at step {switch_step_resolved} of {lightning_steps}"
+                f"Model switching: {switch_strategy} -> switch at step {switch_step_resolved} of {lightning_steps}"
             )
 
         logger.info(switch_info)
@@ -407,30 +406,37 @@ class DualKSamplerAdvanced(DualKSamplerAdvancedAlt):
         base_inputs = super().INPUT_TYPES()
         required = dict(base_inputs["required"])
 
-        for key in ("switch_boundary", "dry_run"):
+        for key in ("switch_step", "switch_boundary", "dry_run"):
             required.pop(key, None)
 
-        optional = dict(base_inputs.get("optional", {}))
-        optional.update(
-            {
-                "switch_boundary": (
-                    "FLOAT",
-                    {
-                        "default": DEFAULT_BOUNDARY_T2V,
-                        "min": 0.0,
-                        "max": 1.0,
-                        "step": 0.001,
-                        "tooltip": "Boundary used for boundary-based strategies.",
-                    },
-                ),
-                "dry_run": (
-                    "BOOLEAN",
-                    {
-                        "default": False,
-                        "tooltip": "Validate & show resolved stage ranges (toast). Does not sample.",
-                    },
-                ),
-            }
-        )
+        optional = {
+            "switch_step": (
+                "INT",
+                {
+                    "default": -1,
+                    "min": -1,
+                    "max": 99,
+                    "tooltip": "Manual step to switch models. Only used when switch_strategy is 'Manual switch step'. "
+                    "Use -1 to fall back to lightning_start.",
+                },
+            ),
+            "switch_boundary": (
+                "FLOAT",
+                {
+                    "default": DEFAULT_BOUNDARY_T2V,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.001,
+                    "tooltip": "Boundary used for Manual boundary and Manual boundary (refined).",
+                },
+            ),
+            "dry_run": (
+                "BOOLEAN",
+                {
+                    "default": False,
+                    "tooltip": "Validate & show resolved stage ranges (toast). Does not sample.",
+                },
+            ),
+        }
 
         return {"required": required, "optional": optional}
