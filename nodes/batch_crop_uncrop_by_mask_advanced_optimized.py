@@ -45,14 +45,23 @@ def _mask_bbox(mask2d: torch.Tensor):
     """
     mask2d: (H,W)
     returns (min_x, min_y, max_x_excl, max_y_excl) or None if empty
+
+    This version avoids torch.nonzero() over every positive pixel. It only finds
+    occupied rows/columns, which is much lighter for large filled masks.
     """
-    y_idx, x_idx = torch.nonzero(mask2d > 0, as_tuple=True)
-    if y_idx.numel() == 0 or x_idx.numel() == 0:
+    m = mask2d > 0
+    rows = torch.any(m, dim=1)
+    cols = torch.any(m, dim=0)
+
+    if not bool(rows.any().item()) or not bool(cols.any().item()):
         return None
-    min_y = int(y_idx.min().item())
-    max_y = int(y_idx.max().item()) + 1
-    min_x = int(x_idx.min().item())
-    max_x = int(x_idx.max().item()) + 1
+
+    y_idx = torch.where(rows)[0]
+    x_idx = torch.where(cols)[0]
+    min_y = int(y_idx[0].item())
+    max_y = int(y_idx[-1].item()) + 1
+    min_x = int(x_idx[0].item())
+    max_x = int(x_idx[-1].item()) + 1
     return (min_x, min_y, max_x, max_y)
 
 
@@ -215,17 +224,14 @@ def _affine_inverse_matrix(scale: float, cx: float, cy: float, crop_w: int, crop
     ]
 
 
-def _build_affine_grid(affine_2x3, out_w: int, out_h: int, in_w: int, in_h: int, device, dtype):
+def _make_pixel_grid(out_w: int, out_h: int, device, dtype):
     ys = torch.arange(out_h, device=device, dtype=dtype)
     xs = torch.arange(out_w, device=device, dtype=dtype)
     grid_y, grid_x = torch.meshgrid(ys, xs, indexing="ij")
+    return grid_x, grid_y
 
-    a, b, tx = affine_2x3[0]
-    c, d, ty = affine_2x3[1]
 
-    src_x = a * grid_x + b * grid_y + tx
-    src_y = c * grid_x + d * grid_y + ty
-
+def _normalize_grid(src_x: torch.Tensor, src_y: torch.Tensor, in_w: int, in_h: int):
     if in_w > 1:
         src_x = (src_x + 0.5) / in_w * 2.0 - 1.0
     else:
@@ -234,9 +240,44 @@ def _build_affine_grid(affine_2x3, out_w: int, out_h: int, in_w: int, in_h: int,
         src_y = (src_y + 0.5) / in_h * 2.0 - 1.0
     else:
         src_y = torch.zeros_like(src_y)
+    return src_x, src_y
 
+
+def _build_affine_grid_from_pixel_grid(affine_2x3, grid_x: torch.Tensor, grid_y: torch.Tensor, in_w: int, in_h: int):
+    a, b, tx = affine_2x3[0]
+    c, d, ty = affine_2x3[1]
+
+    src_x = a * grid_x + b * grid_y + tx
+    src_y = c * grid_x + d * grid_y + ty
+    src_x, src_y = _normalize_grid(src_x, src_y, in_w, in_h)
     grid = torch.stack((src_x, src_y), dim=-1)
     return grid.unsqueeze(0)
+
+
+def _build_affine_grid_batch(affines_2x3: torch.Tensor, grid_x: torch.Tensor, grid_y: torch.Tensor, in_w: int, in_h: int):
+    """
+    affines_2x3: (N,2,3)
+    returns grid: (N,H,W,2)
+    """
+    gx = grid_x.unsqueeze(0)
+    gy = grid_y.unsqueeze(0)
+
+    a = affines_2x3[:, 0, 0].view(-1, 1, 1)
+    b = affines_2x3[:, 0, 1].view(-1, 1, 1)
+    tx = affines_2x3[:, 0, 2].view(-1, 1, 1)
+    c = affines_2x3[:, 1, 0].view(-1, 1, 1)
+    d = affines_2x3[:, 1, 1].view(-1, 1, 1)
+    ty = affines_2x3[:, 1, 2].view(-1, 1, 1)
+
+    src_x = a * gx + b * gy + tx
+    src_y = c * gx + d * gy + ty
+    src_x, src_y = _normalize_grid(src_x, src_y, in_w, in_h)
+    return torch.stack((src_x, src_y), dim=-1)
+
+
+def _build_affine_grid(affine_2x3, out_w: int, out_h: int, in_w: int, in_h: int, device, dtype):
+    grid_x, grid_y = _make_pixel_grid(out_w, out_h, device=device, dtype=dtype)
+    return _build_affine_grid_from_pixel_grid(affine_2x3, grid_x, grid_y, in_w, in_h)
 
 
 def _feather_alpha(alpha_hw: torch.Tensor, feather_px: int) -> torch.Tensor:
@@ -354,6 +395,7 @@ def _make_square_alpha(
     fade_t = fade_left_t * fade_right_t * fade_top_t * fade_bottom_t
     return (alpha * fade_t).clamp(0.0, 1.0)
 
+
 def _fit_crop_to_frame_bounds(
     cx: float,
     cy: float,
@@ -391,7 +433,6 @@ def _fit_crop_to_frame_bounds(
         cy_fit = min(max(float(cy), min_cy), max_cy)
 
     return float(cx_fit), float(cy_fit), float(fit_scale)
-
 
 
 def _draw_crop_visualize(image_hwc: torch.Tensor, cx: float, cy: float, scale: float, crop_w: int, crop_h: int) -> torch.Tensor:
@@ -434,6 +475,7 @@ def _draw_crop_visualize(image_hwc: torch.Tensor, cx: float, cy: float, scale: f
 
     return out
 
+
 class BatchImageCropByMaskAdvanced_StDismas:
     @classmethod
     def INPUT_TYPES(cls):
@@ -459,6 +501,8 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 "interpolation": (["bilinear", "bicubic"], {"default": "bilinear", "tooltip": "Sampling method for image crop"}),
                 "fit_frame_bounds": ("BOOLEAN", {"default": False, "tooltip": "Keep the crop window fully inside the source frame while preserving aspect ratio"}),
                 "divisible_by": ("INT", {"default": 1, "min": 1, "max": 1024, "step": 1, "tooltip": "Make both output crop dimensions divisible by this value"}),
+                "enable_visualize": ("BOOLEAN", {"default": False, "tooltip": "Draw full-frame crop preview. Disable for better speed and much lower memory use on video batches."}),
+                "crop_chunk_size": ("INT", {"default": 16, "min": 1, "max": 256, "step": 1, "tooltip": "How many frames are sampled per grid_sample batch. Lower uses less memory; higher can be faster."}),
             },
             "optional": {
                 "masks": ("MASK", {"tooltip": "Optional extra mask that is cropped with the same transform but does not affect crop computation"}),
@@ -492,6 +536,8 @@ class BatchImageCropByMaskAdvanced_StDismas:
         interpolation,
         fit_frame_bounds,
         divisible_by,
+        enable_visualize=False,
+        crop_chunk_size=16,
         masks=None,
     ):
         B, H, W, C = images.shape
@@ -499,19 +545,15 @@ class BatchImageCropByMaskAdvanced_StDismas:
             raise ValueError(f"Batch size mismatch: images={B}, crop_mask={crop_mask.shape[0]}")
         crop_mask = _ensure_mask_hw(crop_mask, H, W)
 
-        if masks is not None:
+        has_extra_masks = masks is not None
+        if has_extra_masks:
             if masks.shape[0] != B:
                 raise ValueError(f"Batch size mismatch: images={B}, masks={masks.shape[0]}")
             masks = _ensure_mask_hw(masks, H, W)
 
-        out_imgs = []
-        out_crop_masks = []
-        out_masks = []
-        out_visualize = []
-        out_frames = []
-
         device = images.device
         dtype = images.dtype
+        chunk_size = max(1, int(crop_chunk_size))
 
         ratio = _parse_aspect_ratio(aspect_ratio)
 
@@ -526,10 +568,24 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 divisible_by=divisible_by,
             )
 
+        # Preallocate outputs to avoid list -> stack memory spikes.
+        out_imgs = torch.empty((B, crop_h, crop_w, C), device=device, dtype=dtype)
+        out_crop_masks = torch.empty((B, crop_h, crop_w), device=device, dtype=dtype)
+        if has_extra_masks:
+            out_masks = torch.empty((B, crop_h, crop_w), device=device, dtype=dtype)
+        else:
+            out_masks = None
+
+        out_frames = []
+        inverse_affines = []
+        centers_scales = []
+
         prev_center = None
         prev_bbox = None
         prev_scale = None
+        margin_eff = max(float(margin_scale), 1.0)
 
+        # Pass 1: compute bbox, smoothing, metadata. Kept sequential by design.
         for i in range(B):
             crop_mask_i = crop_mask[i]
             bb = _mask_bbox(crop_mask_i)
@@ -538,12 +594,12 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     min_x, min_y, max_x, max_y = prev_bbox
                 else:
                     default_size = max(1.0, min(W, H) * 0.25)
-                    cx = W * 0.5
-                    cy = H * 0.5
-                    min_x = cx - default_size * 0.5
-                    max_x = cx + default_size * 0.5
-                    min_y = cy - default_size * 0.5
-                    max_y = cy + default_size * 0.5
+                    cx0 = W * 0.5
+                    cy0 = H * 0.5
+                    min_x = cx0 - default_size * 0.5
+                    max_x = cx0 + default_size * 0.5
+                    min_y = cy0 - default_size * 0.5
+                    max_y = cy0 + default_size * 0.5
                     min_x, min_y, max_x, max_y = float(min_x), float(min_y), float(max_x), float(max_y)
             else:
                 min_x, min_y, max_x, max_y = bb
@@ -554,7 +610,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
             cx = (min_x + max_x) * 0.5 + float(offset_x)
             cy = (min_y + max_y) * 0.5 + float(offset_y)
 
-            margin_eff = max(float(margin_scale), 1.0)
             bbox_w_exp = bbox_w * margin_eff
             bbox_h_exp = bbox_h * margin_eff
 
@@ -582,74 +637,10 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     frame_h=H,
                 )
 
-                cx, cy, scale = _fit_crop_to_frame_bounds(
-                    cx=cx,
-                    cy=cy,
-                    scale=scale,
-                    crop_w=crop_w,
-                    crop_h=crop_h,
-                    frame_w=W,
-                    frame_h=H,
-                )
-
             forward_affine = _affine_forward_matrix(scale, cx, cy, crop_w, crop_h)
             inverse_affine = _affine_inverse_matrix(scale, cx, cy, crop_w, crop_h)
-
-            grid = _build_affine_grid(
-                inverse_affine,
-                crop_w,
-                crop_h,
-                W,
-                H,
-                device=device,
-                dtype=dtype,
-            )
-
-            img_chw = images[i].permute(2, 0, 1).unsqueeze(0)
-            crop_img = F.grid_sample(
-                img_chw,
-                grid,
-                mode=interpolation,
-                padding_mode="zeros",
-                align_corners=False,
-            ).squeeze(0).permute(1, 2, 0)
-
-            crop_mask_chw = crop_mask_i.unsqueeze(0).unsqueeze(0)
-            crop_m = F.grid_sample(
-                crop_mask_chw,
-                grid,
-                mode="nearest",
-                padding_mode="zeros",
-                align_corners=False,
-            ).squeeze(0).squeeze(0)
-
-            out_imgs.append(crop_img)
-            out_crop_masks.append(crop_m)
-
-            if masks is not None:
-                extra_mask_i = masks[i]
-                extra_mask_chw = extra_mask_i.unsqueeze(0).unsqueeze(0)
-                crop_extra_m = F.grid_sample(
-                    extra_mask_chw,
-                    grid,
-                    mode="nearest",
-                    padding_mode="zeros",
-                    align_corners=False,
-                ).squeeze(0).squeeze(0)
-            else:
-                crop_extra_m = crop_m.clone()
-
-            out_masks.append(crop_extra_m)
-
-            visualize_frame = _draw_crop_visualize(
-                images[i],
-                cx=cx,
-                cy=cy,
-                scale=scale,
-                crop_w=crop_w,
-                crop_h=crop_h,
-            )
-            out_visualize.append(visualize_frame)
+            inverse_affines.append(inverse_affine)
+            centers_scales.append((cx, cy, scale))
 
             bbox_exp = [
                 float(cx - bbox_w_exp * 0.5),
@@ -677,10 +668,63 @@ class BatchImageCropByMaskAdvanced_StDismas:
             prev_bbox = (min_x, min_y, max_x, max_y)
             prev_scale = scale
 
-        out_imgs = torch.stack(out_imgs, dim=0).to(device=device, dtype=dtype)
-        out_crop_masks = torch.stack(out_crop_masks, dim=0).to(device=device, dtype=dtype)
-        out_masks = torch.stack(out_masks, dim=0).to(device=device, dtype=dtype)
-        out_visualize = torch.stack(out_visualize, dim=0).to(device=device, dtype=dtype)
+        # Pass 2: sample images/masks in chunks. This keeps the exact same metadata contract,
+        # but avoids per-frame Python grid_sample calls and avoids building one huge video grid.
+        base_grid_x, base_grid_y = _make_pixel_grid(crop_w, crop_h, device=device, dtype=dtype)
+        for start in range(0, B, chunk_size):
+            end = min(B, start + chunk_size)
+            affines = torch.tensor(inverse_affines[start:end], device=device, dtype=dtype)
+            grid = _build_affine_grid_batch(affines, base_grid_x, base_grid_y, W, H)
+
+            img_nchw = images[start:end].permute(0, 3, 1, 2)
+            sampled_imgs = F.grid_sample(
+                img_nchw,
+                grid,
+                mode=interpolation,
+                padding_mode="zeros",
+                align_corners=False,
+            )
+            out_imgs[start:end] = sampled_imgs.permute(0, 2, 3, 1)
+
+            crop_mask_nchw = crop_mask[start:end].unsqueeze(1)
+            sampled_crop_masks = F.grid_sample(
+                crop_mask_nchw,
+                grid,
+                mode="nearest",
+                padding_mode="zeros",
+                align_corners=False,
+            )
+            out_crop_masks[start:end] = sampled_crop_masks.squeeze(1)
+
+            if has_extra_masks:
+                extra_mask_nchw = masks[start:end].unsqueeze(1)
+                sampled_extra_masks = F.grid_sample(
+                    extra_mask_nchw,
+                    grid,
+                    mode="nearest",
+                    padding_mode="zeros",
+                    align_corners=False,
+                )
+                out_masks[start:end] = sampled_extra_masks.squeeze(1)
+
+        if not has_extra_masks:
+            # Do not allocate/copy a duplicate output. The secondary masks output mirrors cropped_masks.
+            out_masks = out_crop_masks
+
+        if enable_visualize:
+            out_visualize = torch.empty_like(images)
+            for i, (cx, cy, scale) in enumerate(centers_scales):
+                out_visualize[i] = _draw_crop_visualize(
+                    images[i],
+                    cx=cx,
+                    cy=cy,
+                    scale=scale,
+                    crop_w=crop_w,
+                    crop_h=crop_h,
+                )
+        else:
+            # Preserve the output slot without cloning the whole full-frame video batch.
+            out_visualize = images
 
         metadata = {
             "version": "crop_by_mask_v2",
@@ -703,7 +747,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
             "optional": {
                 "base_images": ("IMAGE", {"tooltip": "Base image batch to composite onto"}),
                 "original_images": ("IMAGE", {"tooltip": "Legacy alias for base_images"}),
-                "crop_masks": ("MASK", {"tooltip": "Mask used when mode is overlay_by_mask"}),
+                "crop_masks": ("MASK", {"tooltip": "Mask used when mode is overlay_by_mask and use_square_mask is disabled"}),
                 "border_blending": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Legacy feather control; used if feather_radius is 0"}),
                 "feather_radius": ("INT", {"default": 0, "min": 0, "max": 256, "step": 1, "tooltip": "Edge feathering radius in pixels"}),
                 "crop_rescale": ("FLOAT", {"default": 1.0, "min": 0.25, "max": 4.0, "step": 0.01, "tooltip": "Scale cropped patch before placing in legacy bbox mode"}),
@@ -789,6 +833,9 @@ class BatchImageUncropByMaskAdvanced_StDismas:
                     raise ValueError("base_images size must match crop_metadata orig_size.")
                 out = base_images.clone()
 
+            square_alpha_cache = {}
+            ones_alpha_cache = {}
+
             for i in range(B):
                 frame = frames[i]
                 orig_w, orig_h = frame["orig_size"]
@@ -814,41 +861,63 @@ class BatchImageUncropByMaskAdvanced_StDismas:
                     align_corners=False,
                 ).squeeze(0).permute(1, 2, 0)
 
-                if mode == "overlay_by_mask" and crop_masks is not None:
+                if mode == "overlay_by_mask":
                     if use_square_mask:
-                        alpha_patch = _make_square_alpha(
+                        key = (
                             crop_h,
                             crop_w,
-                            inset_left_px=square_mask_inset_left_px,
-                            inset_right_px=square_mask_inset_right_px,
-                            inset_top_px=square_mask_inset_top_px,
-                            inset_bottom_px=square_mask_inset_bottom_px,
-                            fade_left_px=square_mask_fade_left_px,
-                            fade_right_px=square_mask_fade_right_px,
-                            fade_top_px=square_mask_fade_top_px,
-                            fade_bottom_px=square_mask_fade_bottom_px,
-                            device=device,
-                            dtype=dtype,
-                        ).unsqueeze(0).unsqueeze(0)
+                            int(square_mask_inset_left_px),
+                            int(square_mask_inset_right_px),
+                            int(square_mask_inset_top_px),
+                            int(square_mask_inset_bottom_px),
+                            int(square_mask_fade_left_px),
+                            int(square_mask_fade_right_px),
+                            int(square_mask_fade_top_px),
+                            int(square_mask_fade_bottom_px),
+                        )
+                        alpha_patch = square_alpha_cache.get(key)
+                        if alpha_patch is None:
+                            alpha_patch = _make_square_alpha(
+                                crop_h,
+                                crop_w,
+                                inset_left_px=square_mask_inset_left_px,
+                                inset_right_px=square_mask_inset_right_px,
+                                inset_top_px=square_mask_inset_top_px,
+                                inset_bottom_px=square_mask_inset_bottom_px,
+                                fade_left_px=square_mask_fade_left_px,
+                                fade_right_px=square_mask_fade_right_px,
+                                fade_top_px=square_mask_fade_top_px,
+                                fade_bottom_px=square_mask_fade_bottom_px,
+                                device=device,
+                                dtype=dtype,
+                            ).unsqueeze(0).unsqueeze(0)
+                            square_alpha_cache[key] = alpha_patch
                     else:
+                        if crop_masks is None:
+                            raise ValueError("mode='overlay_by_mask' with use_square_mask=False requires crop_masks.")
                         alpha_patch = crop_masks[i].unsqueeze(0).unsqueeze(0)
-
-                    warped_mask = F.grid_sample(
-                        alpha_patch,
-                        grid,
-                        mode="bilinear",
-                        padding_mode="zeros",
-                        align_corners=False,
-                    ).squeeze(0).squeeze(0)
-
-                    alpha = warped_mask.clamp(0.0, 1.0)
-                    if not use_square_mask:
-                        alpha = _feather_alpha(alpha, feather_px)
-                    alpha = alpha * float(blend)
-                    alpha3 = alpha.unsqueeze(-1)
-                    out[i] = out[i] * (1.0 - alpha3) + warped * alpha3
                 else:
-                    out[i] = out[i] * (1.0 - float(blend)) + warped * float(blend)
+                    # overlay_full should still only affect the valid crop rectangle, not the whole frame.
+                    key = (crop_h, crop_w)
+                    alpha_patch = ones_alpha_cache.get(key)
+                    if alpha_patch is None:
+                        alpha_patch = torch.ones((1, 1, crop_h, crop_w), device=device, dtype=dtype)
+                        ones_alpha_cache[key] = alpha_patch
+
+                warped_mask = F.grid_sample(
+                    alpha_patch,
+                    grid,
+                    mode="bilinear",
+                    padding_mode="zeros",
+                    align_corners=False,
+                ).squeeze(0).squeeze(0)
+
+                alpha = warped_mask.clamp(0.0, 1.0)
+                if mode == "overlay_by_mask" and not use_square_mask:
+                    alpha = _feather_alpha(alpha, feather_px)
+                alpha = alpha * float(blend)
+                alpha3 = alpha.unsqueeze(-1)
+                out[i] = out[i] * (1.0 - alpha3) + warped * alpha3
 
             return (out.to(device=device, dtype=dtype),)
 
@@ -874,6 +943,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         dtype = base_images.dtype
         out = base_images.clone()
 
+        square_alpha_cache = {}
         for i in range(B):
             info = bboxes_use[i]
             x0 = int(info["x0"]); y0 = int(info["y0"]); x1 = int(info["x1"]); y1 = int(info["y1"])
@@ -893,20 +963,35 @@ class BatchImageUncropByMaskAdvanced_StDismas:
 
             patch = _resize_image(cropped_images[i], tgt_w, tgt_h)
             if use_square_mask:
-                alpha = _make_square_alpha(
+                key = (
                     tgt_h,
                     tgt_w,
-                    inset_left_px=square_mask_inset_left_px,
-                    inset_right_px=square_mask_inset_right_px,
-                    inset_top_px=square_mask_inset_top_px,
-                    inset_bottom_px=square_mask_inset_bottom_px,
-                    fade_left_px=square_mask_fade_left_px,
-                    fade_right_px=square_mask_fade_right_px,
-                    fade_top_px=square_mask_fade_top_px,
-                    fade_bottom_px=square_mask_fade_bottom_px,
-                    device=device,
-                    dtype=dtype,
+                    int(square_mask_inset_left_px),
+                    int(square_mask_inset_right_px),
+                    int(square_mask_inset_top_px),
+                    int(square_mask_inset_bottom_px),
+                    int(square_mask_fade_left_px),
+                    int(square_mask_fade_right_px),
+                    int(square_mask_fade_top_px),
+                    int(square_mask_fade_bottom_px),
                 )
+                alpha = square_alpha_cache.get(key)
+                if alpha is None:
+                    alpha = _make_square_alpha(
+                        tgt_h,
+                        tgt_w,
+                        inset_left_px=square_mask_inset_left_px,
+                        inset_right_px=square_mask_inset_right_px,
+                        inset_top_px=square_mask_inset_top_px,
+                        inset_bottom_px=square_mask_inset_bottom_px,
+                        fade_left_px=square_mask_fade_left_px,
+                        fade_right_px=square_mask_fade_right_px,
+                        fade_top_px=square_mask_fade_top_px,
+                        fade_bottom_px=square_mask_fade_bottom_px,
+                        device=device,
+                        dtype=dtype,
+                    )
+                    square_alpha_cache[key] = alpha
             else:
                 alpha = _resize_mask(cropped_masks[i], tgt_w, tgt_h).to(device=device, dtype=dtype)
                 alpha = _feather_alpha(alpha, feather_px)
@@ -944,7 +1029,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
             alpha = alpha[:ph, :pw]
 
             base = out[i, dst_y0:dst_y1, dst_x0:dst_x1, :]
-            alpha3 = alpha.unsqueeze(-1).expand(-1, -1, 3)
+            alpha3 = alpha.unsqueeze(-1).expand(-1, -1, Cc)
             out[i, dst_y0:dst_y1, dst_x0:dst_x1, :] = base * (1.0 - alpha3) + patch * alpha3
 
         return (out.to(device=device, dtype=dtype),)
