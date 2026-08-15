@@ -476,6 +476,209 @@ def _draw_crop_visualize(image_hwc: torch.Tensor, cx: float, cy: float, scale: f
     return out
 
 
+CROP_PIPE_VERSION = "crop_by_mask_pipe_v1"
+
+CROP_PIPE_OVERRIDABLE_KEYS = (
+    "aspect_ratio",
+    "output_long_side",
+    "use_long_side",
+    "use_custom_resolution",
+    "width",
+    "height",
+    "margin_scale",
+    "smooth_center",
+    "center_smoothing_strength",
+    "smooth_zoom",
+    "zoom_smoothing_strength",
+    "offset_x",
+    "offset_y",
+    "min_zoom",
+    "max_zoom",
+    "fit_frame_bounds",
+    "divisible_by",
+)
+
+
+def _broadcast_mask_to_batch(mask, B, name="mask"):
+    """
+    If mask has batch 1 and images have batch B, repeat it.
+    Otherwise require exact batch match.
+    """
+    if mask is None:
+        return None
+
+    if mask.shape[0] == 1 and B > 1:
+        return mask.repeat(B, 1, 1).contiguous()
+
+    if mask.shape[0] != B:
+        raise ValueError(
+            f"Batch size mismatch: images={B}, {name}={mask.shape[0]}"
+        )
+
+    return mask
+
+
+def _extract_crop_pipe_frames(pipe, B, W, H):
+    """
+    Extract per-frame crop transforms from pipe.
+
+    Returns:
+        pipe_frames: list[dict] or None
+        pipe_params: dict
+    """
+    if pipe is None:
+        return None, {}
+
+    if not isinstance(pipe, dict):
+        raise ValueError("pipe must be a dictionary produced by Batch Image Crop By Mask Advanced (StDismas).")
+
+    pipe_params = dict(pipe.get("params", {}) or {})
+    pipe_meta = pipe.get("crop_metadata", None)
+
+    if not isinstance(pipe_meta, dict) or pipe_meta.get("version") != "crop_by_mask_v2":
+        return None, pipe_params
+
+    frames_in = pipe_meta.get("frames", [])
+    if not isinstance(frames_in, (list, tuple)) or len(frames_in) == 0:
+        return None, pipe_params
+
+    if B <= 0:
+        return [], pipe_params
+
+    # Batch rules:
+    # - if target batch is 1, take first pipe frame;
+    # - if pipe has 1 frame, broadcast it to target batch;
+    # - otherwise pipe frame count must match target batch.
+    if B == 1:
+        frames = [dict(frames_in[0])]
+    elif len(frames_in) == 1:
+        frames = [dict(frames_in[0]) for _ in range(B)]
+    elif len(frames_in) == B:
+        frames = [dict(f) for f in frames_in]
+    else:
+        raise ValueError(
+            f"pipe crop_metadata has {len(frames_in)} frames, but current image batch has {B}. "
+            f"Use the same batch size, a single-frame pipe, or a single image target."
+        )
+
+    first = frames[0]
+
+    try:
+        orig_w = int(first["orig_size"][0])
+        orig_h = int(first["orig_size"][1])
+        crop_w = int(first["crop_size"][0])
+        crop_h = int(first["crop_size"][1])
+    except Exception as exc:
+        raise ValueError("pipe crop_metadata frames must contain orig_size and crop_size.") from exc
+
+    # If target resolution differs but aspect ratio is the same, proportionally rescale crop.
+    # If aspect ratio differs, exact identical crop is impossible.
+    rescale = False
+    scale_x = 1.0
+    scale_y = 1.0
+    scale_factor = 1.0
+
+    if orig_w != W or orig_h != H:
+        old_ar = float(orig_w) / max(1.0, float(orig_h))
+        new_ar = float(W) / max(1.0, float(H))
+
+        if abs(old_ar - new_ar) > 1e-4:
+            raise ValueError(
+                f"pipe crop data was created for {orig_w}x{orig_h}, "
+                f"but current images are {W}x{H} and aspect ratio is different. "
+                f"For identical crop use the same resolution/aspect ratio."
+            )
+
+        rescale = True
+        scale_x = float(W) / float(orig_w)
+        scale_y = float(H) / float(orig_h)
+        scale_factor = (scale_x + scale_y) * 0.5
+
+        # Keep pipe params consistent after rescale.
+        if "offset_x" in pipe_params:
+            try:
+                pipe_params["offset_x"] = int(round(float(pipe_params["offset_x"]) * scale_x))
+            except Exception:
+                pass
+
+        if "offset_y" in pipe_params:
+            try:
+                pipe_params["offset_y"] = int(round(float(pipe_params["offset_y"]) * scale_y))
+            except Exception:
+                pass
+
+    for idx, frame in enumerate(frames):
+        try:
+            f_orig_w = int(frame["orig_size"][0])
+            f_orig_h = int(frame["orig_size"][1])
+            f_crop_w = int(frame["crop_size"][0])
+            f_crop_h = int(frame["crop_size"][1])
+            cx = float(frame["center"][0])
+            cy = float(frame["center"][1])
+            S = float(frame["S"])
+        except Exception as exc:
+            raise ValueError(f"pipe crop_metadata frame {idx} is missing required fields.") from exc
+
+        if f_orig_w != orig_w or f_orig_h != orig_h:
+            raise ValueError("All frames in pipe crop_metadata must have the same orig_size.")
+
+        if f_crop_w != crop_w or f_crop_h != crop_h:
+            raise ValueError("All frames in pipe crop_metadata must have the same crop_size.")
+
+        if S <= 0:
+            raise ValueError(f"pipe crop_metadata frame {idx} has invalid scale S={S}.")
+
+        if rescale:
+            cx = cx * scale_x
+            cy = cy * scale_y
+            S = S / scale_factor
+
+            if "offset" in frame:
+                try:
+                    frame["offset"] = [
+                        float(frame["offset"][0]) * scale_x,
+                        float(frame["offset"][1]) * scale_y,
+                    ]
+                except Exception:
+                    pass
+
+            for key in ("mask_bbox", "mask_bbox_exp"):
+                if key in frame and isinstance(frame[key], (list, tuple)) and len(frame[key]) == 4:
+                    frame[key] = [
+                        float(frame[key][0]) * scale_x,
+                        float(frame[key][1]) * scale_y,
+                        float(frame[key][2]) * scale_x,
+                        float(frame[key][3]) * scale_y,
+                    ]
+
+            if bool(frame.get("fit_frame_bounds", False)):
+                cx, cy, S = _fit_crop_to_frame_bounds(
+                    cx=cx,
+                    cy=cy,
+                    scale=S,
+                    crop_w=crop_w,
+                    crop_h=crop_h,
+                    frame_w=W,
+                    frame_h=H,
+                )
+
+            frame["inverse_affine_2x3"] = _affine_inverse_matrix(S, cx, cy, crop_w, crop_h)
+            frame["forward_affine_2x3"] = _affine_forward_matrix(S, cx, cy, crop_w, crop_h)
+        else:
+            if frame.get("inverse_affine_2x3") is None:
+                frame["inverse_affine_2x3"] = _affine_inverse_matrix(S, cx, cy, crop_w, crop_h)
+
+            if frame.get("forward_affine_2x3") is None:
+                frame["forward_affine_2x3"] = _affine_forward_matrix(S, cx, cy, crop_w, crop_h)
+
+        frame["orig_size"] = [int(W), int(H)]
+        frame["crop_size"] = [int(crop_w), int(crop_h)]
+        frame["center"] = [float(cx), float(cy)]
+        frame["S"] = float(S)
+
+    return frames, pipe_params
+
+
 class BatchImageCropByMaskAdvanced_StDismas:
     @classmethod
     def INPUT_TYPES(cls):
@@ -483,34 +686,181 @@ class BatchImageCropByMaskAdvanced_StDismas:
             "required": {
                 "images": ("IMAGE", {"tooltip": "Input image batch (B,H,W,C)"}),
                 "crop_mask": ("MASK", {"tooltip": "Main mask used to compute crop region"}),
-                "aspect_ratio": (ASPECT_RATIO_CHOICES, {"default": "16:9", "tooltip": "Output aspect ratio"}),
-                "output_long_side": ("INT", {"default": 1024, "min": 64, "max": 8192, "step": 1, "tooltip": "Target size of the selected output side in pixels"}),
-                "use_long_side": ("BOOLEAN", {"default": True, "tooltip": "If enabled, output_long_side controls the long side; if disabled, it controls the short side"}),
-                "use_custom_resolution": ("BOOLEAN", {"default": False, "tooltip": "If enabled, use custom width and height for the crop output instead of aspect_ratio/output_long_side"}),
-                "width": ("INT", {"default": 1024, "min": 1, "max": 8192, "step": 1, "tooltip": "Custom crop output width when use_custom_resolution is enabled"}),
-                "height": ("INT", {"default": 576, "min": 1, "max": 8192, "step": 1, "tooltip": "Custom crop output height when use_custom_resolution is enabled"}),
-                "margin_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01, "tooltip": "Expands mask bbox before cropping"}),
-                "smooth_center": ("BOOLEAN", {"default": True, "tooltip": "Enable temporal smoothing for crop center movement"}),
-                "center_smoothing_strength": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Center smoothing strength (0 = locked to previous, 1 = follow current center)"}),
-                "smooth_zoom": ("BOOLEAN", {"default": True, "tooltip": "Enable temporal smoothing for zoom changes"}),
-                "zoom_smoothing_strength": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Zoom smoothing strength (0 = locked to previous, 1 = follow current zoom)"}),
-                "offset_x": ("INT", {"default": 0, "min": -8192, "max": 8192, "step": 1, "tooltip": "Horizontal offset from mask center in source pixels"}),
-                "offset_y": ("INT", {"default": 0, "min": -8192, "max": 8192, "step": 1, "tooltip": "Vertical offset from mask center in source pixels"}),
-                "min_zoom": ("FLOAT", {"default": 0.25, "min": 0.01, "max": 1.0, "step": 0.01, "tooltip": "Minimum zoom limit"}),
-                "max_zoom": ("FLOAT", {"default": 6.0, "min": 1.0, "max": 20.0, "step": 0.01, "tooltip": "Maximum zoom limit"}),
-                "interpolation": (["bilinear", "bicubic"], {"default": "bilinear", "tooltip": "Sampling method for image crop"}),
-                "fit_frame_bounds": ("BOOLEAN", {"default": False, "tooltip": "Keep the crop window fully inside the source frame while preserving aspect ratio"}),
-                "divisible_by": ("INT", {"default": 1, "min": 1, "max": 1024, "step": 1, "tooltip": "Make both output crop dimensions divisible by this value"}),
-                "enable_visualize": ("BOOLEAN", {"default": False, "tooltip": "Draw full-frame crop preview. Disable for better speed and much lower memory use on video batches."}),
-                "crop_chunk_size": ("INT", {"default": 16, "min": 1, "max": 256, "step": 1, "tooltip": "How many frames are sampled per grid_sample batch. Lower uses less memory; higher can be faster."}),
+                "aspect_ratio": (
+                    ASPECT_RATIO_CHOICES,
+                    {"default": "16:9", "tooltip": "Output aspect ratio"},
+                ),
+                "output_long_side": (
+                    "INT",
+                    {
+                        "default": 1024,
+                        "min": 64,
+                        "max": 8192,
+                        "step": 1,
+                        "tooltip": "Target size of the selected output side in pixels",
+                    },
+                ),
+                "use_long_side": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": "If enabled, output_long_side controls the long side; if disabled, it controls the short side",
+                    },
+                ),
+                "use_custom_resolution": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "If enabled, use custom width and height for the crop output instead of aspect_ratio/output_long_side",
+                    },
+                ),
+                "width": (
+                    "INT",
+                    {
+                        "default": 1024,
+                        "min": 1,
+                        "max": 8192,
+                        "step": 1,
+                        "tooltip": "Custom crop output width when use_custom_resolution is enabled",
+                    },
+                ),
+                "height": (
+                    "INT",
+                    {
+                        "default": 576,
+                        "min": 1,
+                        "max": 8192,
+                        "step": 1,
+                        "tooltip": "Custom crop output height when use_custom_resolution is enabled",
+                    },
+                ),
+                "margin_scale": (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                        "min": 0.0,
+                        "max": 10.0,
+                        "step": 0.01,
+                        "tooltip": "Expands mask bbox before cropping",
+                    },
+                ),
+                "smooth_center": (
+                    "BOOLEAN",
+                    {"default": True, "tooltip": "Enable temporal smoothing for crop center movement"},
+                ),
+                "center_smoothing_strength": (
+                    "FLOAT",
+                    {
+                        "default": 0.25,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.01,
+                        "tooltip": "Center smoothing strength (0 = locked to previous, 1 = follow current center)",
+                    },
+                ),
+                "smooth_zoom": (
+                    "BOOLEAN",
+                    {"default": True, "tooltip": "Enable temporal smoothing for zoom changes"},
+                ),
+                "zoom_smoothing_strength": (
+                    "FLOAT",
+                    {
+                        "default": 0.25,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.01,
+                        "tooltip": "Zoom smoothing strength (0 = locked to previous, 1 = follow current zoom)",
+                    },
+                ),
+                "offset_x": (
+                    "INT",
+                    {
+                        "default": 0,
+                        "min": -8192,
+                        "max": 8192,
+                        "step": 1,
+                        "tooltip": "Horizontal offset from mask center in source pixels",
+                    },
+                ),
+                "offset_y": (
+                    "INT",
+                    {
+                        "default": 0,
+                        "min": -8192,
+                        "max": 8192,
+                        "step": 1,
+                        "tooltip": "Vertical offset from mask center in source pixels",
+                    },
+                ),
+                "min_zoom": (
+                    "FLOAT",
+                    {"default": 0.25, "min": 0.01, "max": 1.0, "step": 0.01, "tooltip": "Minimum zoom limit"},
+                ),
+                "max_zoom": (
+                    "FLOAT",
+                    {"default": 6.0, "min": 1.0, "max": 20.0, "step": 0.01, "tooltip": "Maximum zoom limit"},
+                ),
+                "interpolation": (
+                    ["bilinear", "bicubic"],
+                    {"default": "bilinear", "tooltip": "Sampling method for image crop"},
+                ),
+                "fit_frame_bounds": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "Keep the crop window fully inside the source frame while preserving aspect ratio",
+                    },
+                ),
+                "divisible_by": (
+                    "INT",
+                    {
+                        "default": 1,
+                        "min": 1,
+                        "max": 1024,
+                        "step": 1,
+                        "tooltip": "Make both output crop dimensions divisible by this value",
+                    },
+                ),
+                "enable_visualize": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "Draw full-frame crop preview. Disable for better speed and much lower memory use on video batches.",
+                    },
+                ),
+                "crop_chunk_size": (
+                    "INT",
+                    {
+                        "default": 16,
+                        "min": 1,
+                        "max": 256,
+                        "step": 1,
+                        "tooltip": "How many frames are sampled per grid_sample batch. Lower uses less memory; higher can be faster.",
+                    },
+                ),
             },
             "optional": {
-                "masks": ("MASK", {"tooltip": "Optional extra mask that is cropped with the same transform but does not affect crop computation"}),
-            }
+                "masks": (
+                    "MASK",
+                    {
+                        "tooltip": "Optional extra mask that is cropped with the same transform but does not affect crop computation"
+                    },
+                ),
+                "pipe": (
+                    "CROP_PIPE",
+                    {
+                        "tooltip": (
+                            "Pipe from another Batch Image Crop By Mask Advanced node. "
+                            "Overrides all crop settings except interpolation, enable_visualize and crop_chunk_size. "
+                            "Also reuses computed crop transforms for identical cropping."
+                        )
+                    },
+                ),
+            },
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "MASK", "IMAGE", "BBOXES")
-    RETURN_NAMES = ("cropped_images", "cropped_masks", "masks", "visualize", "crop_metadata")
+    RETURN_TYPES = ("IMAGE", "MASK", "MASK", "IMAGE", "BBOXES", "CROP_PIPE")
+    RETURN_NAMES = ("cropped_images", "cropped_masks", "masks", "visualize", "crop_metadata", "pipe")
     FUNCTION = "crop"
     CATEGORY = "Comfyui-StDismas/masking"
 
@@ -539,140 +889,225 @@ class BatchImageCropByMaskAdvanced_StDismas:
         enable_visualize=False,
         crop_chunk_size=16,
         masks=None,
+        pipe=None,
     ):
         B, H, W, C = images.shape
-        if crop_mask.shape[0] != B:
-            raise ValueError(f"Batch size mismatch: images={B}, crop_mask={crop_mask.shape[0]}")
+
+        if crop_mask is None:
+            raise ValueError("crop_mask is required.")
+
         crop_mask = _ensure_mask_hw(crop_mask, H, W)
+        crop_mask = _broadcast_mask_to_batch(crop_mask, B, name="crop_mask")
 
         has_extra_masks = masks is not None
         if has_extra_masks:
-            if masks.shape[0] != B:
-                raise ValueError(f"Batch size mismatch: images={B}, masks={masks.shape[0]}")
             masks = _ensure_mask_hw(masks, H, W)
+            masks = _broadcast_mask_to_batch(masks, B, name="masks")
 
         device = images.device
         dtype = images.dtype
         chunk_size = max(1, int(crop_chunk_size))
 
-        ratio = _parse_aspect_ratio(aspect_ratio)
+        manual_params = {
+            "aspect_ratio": aspect_ratio,
+            "output_long_side": output_long_side,
+            "use_long_side": use_long_side,
+            "use_custom_resolution": use_custom_resolution,
+            "width": width,
+            "height": height,
+            "margin_scale": margin_scale,
+            "smooth_center": smooth_center,
+            "center_smoothing_strength": center_smoothing_strength,
+            "smooth_zoom": smooth_zoom,
+            "zoom_smoothing_strength": zoom_smoothing_strength,
+            "offset_x": offset_x,
+            "offset_y": offset_y,
+            "min_zoom": min_zoom,
+            "max_zoom": max_zoom,
+            "fit_frame_bounds": fit_frame_bounds,
+            "divisible_by": divisible_by,
+        }
 
-        if use_custom_resolution:
-            crop_w = _snap_dimension_to_divisible(width, divisible_by)
-            crop_h = _snap_dimension_to_divisible(height, divisible_by)
+        pipe_frames, pipe_params = _extract_crop_pipe_frames(pipe, B, W, H)
+
+        if pipe is not None:
+            for key in CROP_PIPE_OVERRIDABLE_KEYS:
+                if key in pipe_params:
+                    manual_params[key] = pipe_params[key]
+
+        aspect_ratio = manual_params["aspect_ratio"]
+        output_long_side = manual_params["output_long_side"]
+        use_long_side = manual_params["use_long_side"]
+        use_custom_resolution = manual_params["use_custom_resolution"]
+        width = manual_params["width"]
+        height = manual_params["height"]
+        margin_scale = manual_params["margin_scale"]
+        smooth_center = manual_params["smooth_center"]
+        center_smoothing_strength = manual_params["center_smoothing_strength"]
+        smooth_zoom = manual_params["smooth_zoom"]
+        zoom_smoothing_strength = manual_params["zoom_smoothing_strength"]
+        offset_x = manual_params["offset_x"]
+        offset_y = manual_params["offset_y"]
+        min_zoom = manual_params["min_zoom"]
+        max_zoom = manual_params["max_zoom"]
+        fit_frame_bounds = manual_params["fit_frame_bounds"]
+        divisible_by = manual_params["divisible_by"]
+
+        if pipe_frames is not None and len(pipe_frames) > 0:
+            crop_w = int(pipe_frames[0]["crop_size"][0])
+            crop_h = int(pipe_frames[0]["crop_size"][1])
         else:
-            crop_w, crop_h = _compute_crop_size(
-                output_long_side,
-                ratio,
-                use_long_side=use_long_side,
-                divisible_by=divisible_by,
-            )
+            pipe_frames = None
+            ratio = _parse_aspect_ratio(aspect_ratio)
 
-        # Preallocate outputs to avoid list -> stack memory spikes.
+            if use_custom_resolution:
+                crop_w = _snap_dimension_to_divisible(width, divisible_by)
+                crop_h = _snap_dimension_to_divisible(height, divisible_by)
+            else:
+                crop_w, crop_h = _compute_crop_size(
+                    output_long_side,
+                    ratio,
+                    use_long_side=use_long_side,
+                    divisible_by=divisible_by,
+                )
+
+        # Preallocate outputs.
         out_imgs = torch.empty((B, crop_h, crop_w, C), device=device, dtype=dtype)
         out_crop_masks = torch.empty((B, crop_h, crop_w), device=device, dtype=dtype)
+
         if has_extra_masks:
             out_masks = torch.empty((B, crop_h, crop_w), device=device, dtype=dtype)
         else:
             out_masks = None
 
-        out_frames = []
         inverse_affines = []
         centers_scales = []
+        out_frames = []
 
-        prev_center = None
-        prev_bbox = None
-        prev_scale = None
-        margin_eff = max(float(margin_scale), 1.0)
+        if pipe_frames is not None:
+            # Reuse already computed crop transforms.
+            for frame in pipe_frames:
+                cx = float(frame["center"][0])
+                cy = float(frame["center"][1])
+                S = float(frame["S"])
 
-        # Pass 1: compute bbox, smoothing, metadata. Kept sequential by design.
-        for i in range(B):
-            crop_mask_i = crop_mask[i]
-            bb = _mask_bbox(crop_mask_i)
-            if bb is None:
-                if prev_bbox is not None:
-                    min_x, min_y, max_x, max_y = prev_bbox
+                inverse_affines.append(frame["inverse_affine_2x3"])
+                centers_scales.append((cx, cy, S))
+
+                frame_out = dict(frame)
+                frame_out["orig_size"] = [int(W), int(H)]
+                frame_out["crop_size"] = [int(crop_w), int(crop_h)]
+
+                # Keep metadata self-contained for downstream uncrop.
+                frame_out.setdefault("offset", [float(offset_x), float(offset_y)])
+                frame_out.setdefault("fit_frame_bounds", bool(fit_frame_bounds))
+                frame_out.setdefault("divisible_by", int(divisible_by))
+                frame_out.setdefault("use_long_side", bool(use_long_side))
+                frame_out.setdefault("use_custom_resolution", bool(use_custom_resolution))
+
+                out_frames.append(frame_out)
+        else:
+            # Original pass 1: compute bbox, smoothing, metadata.
+            prev_center = None
+            prev_bbox = None
+            prev_scale = None
+            margin_eff = max(float(margin_scale), 1.0)
+
+            for i in range(B):
+                crop_mask_i = crop_mask[i]
+                bb = _mask_bbox(crop_mask_i)
+
+                if bb is None:
+                    if prev_bbox is not None:
+                        min_x, min_y, max_x, max_y = prev_bbox
+                    else:
+                        default_size = max(1.0, min(W, H) * 0.25)
+                        cx0 = W * 0.5
+                        cy0 = H * 0.5
+                        min_x = cx0 - default_size * 0.5
+                        max_x = cx0 + default_size * 0.5
+                        min_y = cy0 - default_size * 0.5
+                        max_y = cy0 + default_size * 0.5
+                        min_x, min_y, max_x, max_y = float(min_x), float(min_y), float(max_x), float(max_y)
                 else:
-                    default_size = max(1.0, min(W, H) * 0.25)
-                    cx0 = W * 0.5
-                    cy0 = H * 0.5
-                    min_x = cx0 - default_size * 0.5
-                    max_x = cx0 + default_size * 0.5
-                    min_y = cy0 - default_size * 0.5
-                    max_y = cy0 + default_size * 0.5
+                    min_x, min_y, max_x, max_y = bb
                     min_x, min_y, max_x, max_y = float(min_x), float(min_y), float(max_x), float(max_y)
-            else:
-                min_x, min_y, max_x, max_y = bb
-                min_x, min_y, max_x, max_y = float(min_x), float(min_y), float(max_x), float(max_y)
 
-            bbox_w = max(1.0, max_x - min_x)
-            bbox_h = max(1.0, max_y - min_y)
-            cx = (min_x + max_x) * 0.5 + float(offset_x)
-            cy = (min_y + max_y) * 0.5 + float(offset_y)
+                bbox_w = max(1.0, max_x - min_x)
+                bbox_h = max(1.0, max_y - min_y)
 
-            bbox_w_exp = bbox_w * margin_eff
-            bbox_h_exp = bbox_h * margin_eff
+                cx = (min_x + max_x) * 0.5 + float(offset_x)
+                cy = (min_y + max_y) * 0.5 + float(offset_y)
 
-            sx = crop_w / bbox_w_exp
-            sy = crop_h / bbox_h_exp
-            scale = min(sx, sy)
-            scale = max(float(min_zoom), min(float(max_zoom), scale))
+                bbox_w_exp = bbox_w * margin_eff
+                bbox_h_exp = bbox_h * margin_eff
 
-            if smooth_center and prev_center is not None:
-                a = float(center_smoothing_strength)
-                cx = prev_center[0] * (1.0 - a) + cx * a
-                cy = prev_center[1] * (1.0 - a) + cy * a
-            if smooth_zoom and prev_scale is not None:
-                a = float(zoom_smoothing_strength)
-                scale = prev_scale * (1.0 - a) + scale * a
+                sx = crop_w / bbox_w_exp
+                sy = crop_h / bbox_h_exp
+                scale = min(sx, sy)
+                scale = max(float(min_zoom), min(float(max_zoom), scale))
 
-            if fit_frame_bounds:
-                cx, cy, scale = _fit_crop_to_frame_bounds(
-                    cx=cx,
-                    cy=cy,
-                    scale=scale,
-                    crop_w=crop_w,
-                    crop_h=crop_h,
-                    frame_w=W,
-                    frame_h=H,
+                if smooth_center and prev_center is not None:
+                    a = float(center_smoothing_strength)
+                    cx = prev_center[0] * (1.0 - a) + cx * a
+                    cy = prev_center[1] * (1.0 - a) + cy * a
+
+                if smooth_zoom and prev_scale is not None:
+                    a = float(zoom_smoothing_strength)
+                    scale = prev_scale * (1.0 - a) + scale * a
+
+                if fit_frame_bounds:
+                    cx, cy, scale = _fit_crop_to_frame_bounds(
+                        cx=cx,
+                        cy=cy,
+                        scale=scale,
+                        crop_w=crop_w,
+                        crop_h=crop_h,
+                        frame_w=W,
+                        frame_h=H,
+                    )
+
+                forward_affine = _affine_forward_matrix(scale, cx, cy, crop_w, crop_h)
+                inverse_affine = _affine_inverse_matrix(scale, cx, cy, crop_w, crop_h)
+
+                inverse_affines.append(inverse_affine)
+                centers_scales.append((cx, cy, scale))
+
+                bbox_exp = [
+                    float(cx - bbox_w_exp * 0.5),
+                    float(cy - bbox_h_exp * 0.5),
+                    float(cx + bbox_w_exp * 0.5),
+                    float(cy + bbox_h_exp * 0.5),
+                ]
+
+                out_frames.append(
+                    {
+                        "orig_size": [int(W), int(H)],
+                        "crop_size": [int(crop_w), int(crop_h)],
+                        "S": float(scale),
+                        "center": [float(cx), float(cy)],
+                        "offset": [float(offset_x), float(offset_y)],
+                        "fit_frame_bounds": bool(fit_frame_bounds),
+                        "divisible_by": int(divisible_by),
+                        "use_long_side": bool(use_long_side),
+                        "use_custom_resolution": bool(use_custom_resolution),
+                        "forward_affine_2x3": forward_affine,
+                        "inverse_affine_2x3": inverse_affine,
+                        "mask_bbox": [float(min_x), float(min_y), float(max_x), float(max_y)],
+                        "mask_bbox_exp": bbox_exp,
+                    }
                 )
 
-            forward_affine = _affine_forward_matrix(scale, cx, cy, crop_w, crop_h)
-            inverse_affine = _affine_inverse_matrix(scale, cx, cy, crop_w, crop_h)
-            inverse_affines.append(inverse_affine)
-            centers_scales.append((cx, cy, scale))
+                prev_center = (cx, cy)
+                prev_bbox = (min_x, min_y, max_x, max_y)
+                prev_scale = scale
 
-            bbox_exp = [
-                float(cx - bbox_w_exp * 0.5),
-                float(cy - bbox_h_exp * 0.5),
-                float(cx + bbox_w_exp * 0.5),
-                float(cy + bbox_h_exp * 0.5),
-            ]
-            out_frames.append({
-                "orig_size": [int(W), int(H)],
-                "crop_size": [int(crop_w), int(crop_h)],
-                "S": float(scale),
-                "center": [float(cx), float(cy)],
-                "offset": [float(offset_x), float(offset_y)],
-                "fit_frame_bounds": bool(fit_frame_bounds),
-                "divisible_by": int(divisible_by),
-                "use_long_side": bool(use_long_side),
-                "use_custom_resolution": bool(use_custom_resolution),
-                "forward_affine_2x3": forward_affine,
-                "inverse_affine_2x3": inverse_affine,
-                "mask_bbox": [float(min_x), float(min_y), float(max_x), float(max_y)],
-                "mask_bbox_exp": bbox_exp,
-            })
-
-            prev_center = (cx, cy)
-            prev_bbox = (min_x, min_y, max_x, max_y)
-            prev_scale = scale
-
-        # Pass 2: sample images/masks in chunks. This keeps the exact same metadata contract,
-        # but avoids per-frame Python grid_sample calls and avoids building one huge video grid.
+        # Pass 2: sample images/masks in chunks.
         base_grid_x, base_grid_y = _make_pixel_grid(crop_w, crop_h, device=device, dtype=dtype)
+
         for start in range(0, B, chunk_size):
             end = min(B, start + chunk_size)
+
             affines = torch.tensor(inverse_affines[start:end], device=device, dtype=dtype)
             grid = _build_affine_grid_batch(affines, base_grid_x, base_grid_y, W, H)
 
@@ -708,7 +1143,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 out_masks[start:end] = sampled_extra_masks.squeeze(1)
 
         if not has_extra_masks:
-            # Do not allocate/copy a duplicate output. The secondary masks output mirrors cropped_masks.
             out_masks = out_crop_masks
 
         if enable_visualize:
@@ -723,7 +1157,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     crop_h=crop_h,
                 )
         else:
-            # Preserve the output slot without cloning the whole full-frame video batch.
             out_visualize = images
 
         metadata = {
@@ -731,7 +1164,30 @@ class BatchImageCropByMaskAdvanced_StDismas:
             "frames": out_frames,
         }
 
-        return (out_imgs, out_crop_masks, out_masks, out_visualize, metadata)
+        out_params = dict(manual_params)
+        out_params["width"] = int(crop_w)
+        out_params["height"] = int(crop_h)
+
+        # These are included for completeness, but pipe consumer intentionally
+        # does NOT override them from pipe.
+        out_params["interpolation"] = interpolation
+        out_params["enable_visualize"] = enable_visualize
+        out_params["crop_chunk_size"] = crop_chunk_size
+
+        out_pipe = {
+            "version": CROP_PIPE_VERSION,
+            "params": out_params,
+            "crop_metadata": metadata,
+        }
+
+        return (
+            out_imgs,
+            out_crop_masks,
+            out_masks,
+            out_visualize,
+            metadata,
+            out_pipe,
+        )
 
 
 class BatchImageUncropByMaskAdvanced_StDismas:
