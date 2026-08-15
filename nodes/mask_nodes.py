@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import math
 
 import numpy as np
 import scipy.ndimage
@@ -266,13 +267,94 @@ class ExpandMaskWithFeathering:
 
         return (_restore_mask_dims(out, mask), _restore_mask_dims(out_inv, mask))
 
+class AudioTimeMask:
+    """
+    Генерирует одномерную [F] аудио-маску для LanPaint_AVEncode.
+    Интервалы задаются либо в секундах (через fps), либо напрямую в кадрах.
+    1 = регенерировать аудио, 0 = оставить оригинал.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "frame_count": ("INT", {
+                    "default": 120, "min": 1, "max": 1000000,
+                    "tooltip": "Число кадров видео. Должно совпадать с видео, "
+                               "которое подаётся в LanPaint_AVEncode.",
+                }),
+                "fps": ("FLOAT", {
+                    "default": 24.0, "min": 0.001, "step": 0.01,
+                    "tooltip": "Частота кадров видео. Используется только в режиме 'seconds'.",
+                }),
+                "mode": (["seconds", "frames"], {
+                    "default": "seconds",
+                    "tooltip": "seconds: интервалы 'start,end' в секундах; "
+                               "frames: интервалы 'start,end' в кадрах (конец включительно).",
+                }),
+                "intervals": ("STRING", {
+                    "default": "0.5, 2.0; 4.0, 5.5",
+                    "multiline": True,
+                    "tooltip": "Интервалы через ';'. Формат 'start, end' "
+                               "(или одно число = один кадр/секунда). "
+                               "В режиме frames конец интервала включительный.",
+                }),
+            }
+        }
+
+    RETURN_TYPES = ("MASK",)
+    RETURN_NAMES = ("audio_mask",)
+    FUNCTION = "build"
+    CATEGORY = "StDismas/Mask"
+    DESCRIPTION = ("Создаёт 1D-маску [F] для аудио-инпейнтинга в частоте кадров видео "
+                   "(1 = регенерировать, 0 = оставить). Интервалы — в секундах или кадрах.")
+
+    def build(self, frame_count, fps, mode, intervals):
+        mask = torch.zeros(frame_count, dtype=torch.float32)
+
+        for chunk in str(intervals).split(";"):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+
+            parts = [p.strip() for p in chunk.split(",") if p.strip() != ""]
+            if not parts:
+                continue
+            try:
+                vals = [float(p) for p in parts]
+            except ValueError:
+                print(f"[AudioTimeMask] не могу разобрать интервал: {chunk!r}")
+                continue
+
+            if len(vals) == 1:
+                start = end = vals[0]
+            else:
+                start, end = vals[0], vals[1]
+
+            if end < start:
+                print(f"[AudioTimeMask] конец раньше начала, пропускаю: {chunk!r}")
+                continue
+
+            if mode == "seconds":
+                f0 = max(0, int(math.floor(start * fps)))
+                f1 = min(frame_count, int(math.ceil(end * fps)))
+            else:  # "frames": индексы кадров, конец включительно
+                f0 = max(0, int(round(start)))
+                f1 = min(frame_count, int(round(end)) + 1)
+
+            if f1 > f0:
+                mask[f0:f1] = 1.0
+
+        return (mask,)
 
 NODE_CLASS_MAPPINGS = {
     "ExpandMaskBySides": ExpandMaskBySides,
     "ExpandMaskWithFeathering": ExpandMaskWithFeathering,
+    "AudioTimeMask": AudioTimeMask,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ExpandMaskBySides": "Expand Mask By Sides",
     "ExpandMaskWithFeathering": "Expand Mask With Feathering",
+    "AudioTimeMask": "Audio Time Mask (LanPaint)",
 }
