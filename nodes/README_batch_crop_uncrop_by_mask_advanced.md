@@ -4,6 +4,38 @@
 
 Репозиторий: https://github.com/svyatojdismas/ComfyUI-StDismas
 
+## Новые режимы FaceRefine
+
+Универсальный mask-пайплайн сохранен. Для старых workflow основная нода и первые шесть выходов не изменили смысл. Дополнительно доступна нода **Batch Image Crop By Mask or Face Advanced**, в которой `crop_mask` необязателен:
+
+- `tracking_mode = mask` — обычная универсальная работа по любой маске;
+- `tracking_mode = face_detection` — поиск и покадровый трекинг лица;
+- `identity_reference` — необязательный референс личности;
+- continuity выбирает лицо в обычных кадрах, InsightFace вызывается только при неоднозначном выборе;
+- `fallback_detector` может оценить положение головы по bbox человека, если лицо временно пропало;
+- `keep_face_models_loaded = false` освобождает detector/recognizer до генерации и является безопасным режимом для ограниченных VRAM/RAM.
+
+Face-функции загружаются лениво и не нужны для `tracking_mode = mask`. Для них отдельно установите `requirements-face.txt`, один вариант ONNX Runtime и face detector (например `face_yolov8m.pt`) в `models/ultralytics/bbox`. Не устанавливайте одновременно CPU- и GPU-варианты ONNX Runtime. Для минимального расхода VRAM используйте `face_model_device = cpu`, `identity_pack = buffalo_s`, `keep_face_models_loaded = false`.
+
+### Траектория и разрешение
+
+- `smoothing_method`: `gaussian`, `savgol`, `moving_average`, прежний `ema` или `none`;
+- `center_smooth_window` и `size_smooth_window` сглаживают положение и масштаб раздельно;
+- пустые кадры интерполируются между прошлым и будущим valid bbox;
+- `size_metric = bbox_fit` остается универсальным, `height` рекомендуется для лица в профиль;
+- `resolution_mode = manual` сохраняет ручное разрешение;
+- `auto_no_downscale` выбирает единый canvas по крупнейшему source crop;
+- `auto_capped` делает то же, но ограничивает длинную сторону через `auto_resolution_cap`;
+- дополнительные выходы `report`, `canvas_width`, `canvas_height` показывают выбранное разрешение и magnification statistics.
+
+### Улучшенный Uncrop
+
+- `square_mask_units = source_pixels` сохраняет физическую ширину inset/fade при изменении zoom; `crop_pixels` сохраняет прежнее поведение;
+- feather теперь Gaussian;
+- `color_match_mode`: `off`, `mean`, `mean_std`, `luminance`; интенсивность задается `color_match_strength`;
+- `undetected_frames`: `fade_out`, `skip`, `composite_anyway`;
+- `uncrop_chunk_size` ограничивает размер GPU batch, а `uncrop_memory_limit_mb` автоматически уменьшает chunk, чтобы не переполнить VRAM/RAM.
+
 ---
 
 # 1. Batch Image Crop By Mask Advanced

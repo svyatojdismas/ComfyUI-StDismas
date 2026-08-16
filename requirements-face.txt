@@ -1,0 +1,7 @@
+# Optional: only needed for tracking_mode=face_detection / identity_reference.
+ultralytics
+insightface
+
+# Install exactly one ONNX Runtime build separately:
+# onnxruntime      (CPU, safest for low-VRAM systems)
+# onnxruntime-gpu  (CUDA)
