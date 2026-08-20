@@ -222,22 +222,32 @@ def _interp_gaps(values: np.ndarray, valid: np.ndarray, fallback: float) -> np.n
     return np.interp(indices, indices[valid], values[valid])
 
 
-def _smooth_trajectory(values: np.ndarray, window: int, method: str, ema_strength: float) -> np.ndarray:
+def _apply_trajectory_response(
+    values: np.ndarray, filtered: np.ndarray, response_strength: float
+) -> np.ndarray:
+    """Follow a filtered trajectory using the legacy 0..1 response control."""
+    alpha = min(1.0, max(0.0, float(response_strength)))
+    result = np.asarray(filtered, dtype=np.float64).copy()
+    result[0] = values[0]
+    for i in range(1, len(result)):
+        result[i] = result[i - 1] * (1.0 - alpha) + result[i] * alpha
+    return result
+
+
+def _smooth_trajectory(
+    values: np.ndarray, window: int, method: str, response_strength: float
+) -> np.ndarray:
     values = np.asarray(values, dtype=np.float64)
     if method == "none" or len(values) < 2:
         return values.copy()
     if method == "ema":
-        alpha = min(1.0, max(0.0, float(ema_strength)))
-        result = values.copy()
-        for i in range(1, len(result)):
-            result[i] = result[i - 1] * (1.0 - alpha) + values[i] * alpha
-        return result
+        return _apply_trajectory_response(values, values, response_strength)
 
     window = min(max(1, int(window)), len(values))
     if window % 2 == 0:
         window = max(1, window - 1)
     if window < 3:
-        return values.copy()
+        return _apply_trajectory_response(values, values, response_strength)
     pad = window // 2
     padded = np.pad(values, pad, mode="reflect")
     if method == "savgol":
@@ -245,7 +255,8 @@ def _smooth_trajectory(values: np.ndarray, window: int, method: str, ema_strengt
             from scipy.signal import savgol_filter
 
             order = 2 if window > 3 else 1
-            return np.asarray(savgol_filter(padded, window, order))[pad:pad + len(values)]
+            filtered = np.asarray(savgol_filter(padded, window, order))[pad:pad + len(values)]
+            return _apply_trajectory_response(values, filtered, response_strength)
         except Exception:
             method = "gaussian"
     if method == "gaussian":
@@ -255,7 +266,8 @@ def _smooth_trajectory(values: np.ndarray, window: int, method: str, ema_strengt
         kernel /= kernel.sum()
     else:
         kernel = np.ones(window, dtype=np.float64) / float(window)
-    return np.convolve(padded, kernel, mode="valid")[:len(values)]
+    filtered = np.convolve(padded, kernel, mode="valid")[:len(values)]
+    return _apply_trajectory_response(values, filtered, response_strength)
 
 
 def _bbox_size_value(width: float, height: float, metric: str, output_aspect: float) -> tuple[float, float]:
@@ -1228,6 +1240,13 @@ class BatchImageCropByMaskAdvanced_StDismas:
             "required": {
                 "images": ("IMAGE", {"tooltip": "Input image batch (B,H,W,C)"}),
                 "crop_mask": ("MASK", {"tooltip": "Main mask used to compute crop region"}),
+                "tracking_mode": (
+                    ["mask", "face_detection"],
+                    {
+                        "default": "mask",
+                        "tooltip": "mask keeps the universal mask workflow. face_detection ignores crop_mask geometry and tracks a detected face.",
+                    },
+                ),
                 "aspect_ratio": (
                     ASPECT_RATIO_CHOICES,
                     {"default": "16:9", "tooltip": "Output aspect ratio"},
@@ -1290,6 +1309,13 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     "BOOLEAN",
                     {"default": True, "tooltip": "Enable temporal smoothing for crop center movement"},
                 ),
+                "smoothing_method": (
+                    SMOOTHING_METHODS,
+                    {
+                        "default": "gaussian",
+                        "tooltip": "Filter used for center and zoom. The legacy strength controls set how quickly the crop follows the filtered trajectory.",
+                    },
+                ),
                 "center_smoothing_strength": (
                     "FLOAT",
                     {
@@ -1299,6 +1325,10 @@ class BatchImageCropByMaskAdvanced_StDismas:
                         "step": 0.01,
                         "tooltip": "Center smoothing strength (0 = locked to previous, 1 = follow current center)",
                     },
+                ),
+                "center_smooth_window": (
+                    "INT",
+                    {"default": 21, "min": 1, "max": 401, "step": 2, "tooltip": "Temporal filter window for crop center."},
                 ),
                 "smooth_zoom": (
                     "BOOLEAN",
@@ -1313,6 +1343,10 @@ class BatchImageCropByMaskAdvanced_StDismas:
                         "step": 0.01,
                         "tooltip": "Zoom smoothing strength (0 = locked to previous, 1 = follow current zoom)",
                     },
+                ),
+                "size_smooth_window": (
+                    "INT",
+                    {"default": 51, "min": 1, "max": 401, "step": 2, "tooltip": "Independent temporal filter window for crop size/zoom."},
                 ),
                 "offset_x": (
                     "INT",
@@ -1379,28 +1413,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
                         "step": 1,
                         "tooltip": "How many frames are sampled per grid_sample batch. Lower uses less memory; higher can be faster.",
                     },
-                ),
-                "tracking_mode": (
-                    ["mask", "face_detection"],
-                    {
-                        "default": "mask",
-                        "tooltip": "mask keeps the universal mask workflow. face_detection ignores crop_mask geometry and tracks a detected face.",
-                    },
-                ),
-                "smoothing_method": (
-                    SMOOTHING_METHODS,
-                    {
-                        "default": "gaussian",
-                        "tooltip": "Offline symmetric smoothing avoids EMA lag. EMA remains available for backward-compatible behaviour.",
-                    },
-                ),
-                "center_smooth_window": (
-                    "INT",
-                    {"default": 21, "min": 1, "max": 401, "step": 2, "tooltip": "Temporal window for crop center."},
-                ),
-                "size_smooth_window": (
-                    "INT",
-                    {"default": 51, "min": 1, "max": 401, "step": 2, "tooltip": "Independent, usually larger temporal window for crop size."},
                 ),
                 "size_metric": (
                     SIZE_METRICS,

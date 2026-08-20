@@ -21,6 +21,8 @@ Face-функции загружаются лениво и не нужны дл�
 
 - `smoothing_method`: `gaussian`, `savgol`, `moving_average`, прежний `ema` или `none`;
 - `center_smooth_window` и `size_smooth_window` сглаживают положение и масштаб раздельно;
+- прежние `center_smoothing_strength` и `zoom_smoothing_strength` управляют реакцией всех методов: `0` фиксирует центр/zoom, `1` полностью следует отфильтрованной траектории;
+- интерфейс показывает окна только для оконных фильтров, а параметры face tracking — только при `tracking_mode = face_detection`;
 - пустые кадры интерполируются между прошлым и будущим valid bbox;
 - `size_metric = bbox_fit` остается универсальным, `height` рекомендуется для лица в профиль;
 - `resolution_mode = manual` сохраняет ручное разрешение;

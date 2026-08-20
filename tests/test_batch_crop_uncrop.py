@@ -70,6 +70,41 @@ class CropUncropTests(unittest.TestCase):
         self.assertAlmostEqual(centers[2], 35.0)
         self.assertFalse(metadata["frames"][1]["valid"])
 
+    def test_tracking_mode_is_the_first_setting(self):
+        required = MODULE.BatchImageCropByMaskAdvanced_StDismas.INPUT_TYPES()["required"]
+        widget_names = [name for name in required if name not in {"images", "crop_mask"}]
+        self.assertEqual(widget_names[0], "tracking_mode")
+
+    def test_legacy_strength_controls_every_smoothing_method(self):
+        values = MODULE.np.asarray([10.0, 20.0, 5.0, 30.0, 15.0])
+        for method in ("gaussian", "savgol", "moving_average", "ema"):
+            with self.subTest(method=method):
+                locked = MODULE._smooth_trajectory(values, 5, method, 0.0)
+                following = MODULE._smooth_trajectory(values, 5, method, 1.0)
+                self.assertTrue(MODULE.np.allclose(locked, values[0]))
+                self.assertFalse(MODULE.np.allclose(following, locked))
+
+        disabled = MODULE._smooth_trajectory(values, 5, "none", 0.0)
+        self.assertTrue(MODULE.np.allclose(disabled, values))
+
+    def test_zero_strength_freezes_center_and_zoom_in_crop_pipeline(self):
+        masks = torch.zeros_like(self.masks)
+        masks[0, 10:20, 10:20] = 1.0
+        masks[1, 20:40, 20:40] = 1.0
+        masks[2, 30:42, 40:56] = 1.0
+        result = run_crop(
+            self.images,
+            masks,
+            smoothing_method="gaussian",
+            center_smooth_window=3,
+            size_smooth_window=3,
+            center_smoothing_strength=0.0,
+            zoom_smoothing_strength=0.0,
+        )
+        frames = result[4]["frames"]
+        self.assertTrue(all(frame["center"] == frames[0]["center"] for frame in frames))
+        self.assertTrue(all(frame["S"] == frames[0]["S"] for frame in frames))
+
     def test_auto_capped_resolution_and_report_outputs(self):
         result = run_crop(
             self.images,
