@@ -9,7 +9,7 @@ import torch
 MODULE_PATH = (
     pathlib.Path(__file__).parents[1]
     / "nodes"
-    / "batch_crop_uncrop_by_mask_advanced_optimized.py"
+    / "batch_crop_uncrop_by_mask_advanced.py"
 )
 SPEC = importlib.util.spec_from_file_location("stdismas_crop_nodes", MODULE_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
