@@ -1,9 +1,8 @@
 import { app } from "../../scripts/app.js";
 
-const CROP_NODE_CLASSES = new Set([
-  "BatchImageCropByMaskAdvanced_StDismas",
-  "BatchImageCropByMaskOrFaceAdvanced_StDismas",
-]);
+const CROP_NODE_CLASSES = new Set(["BatchImageCropByMaskAdvanced_StDismas"]);
+const LEGACY_FACE_CROP_CLASS = "BatchImageCropByMaskOrFaceAdvanced_StDismas";
+const UNIVERSAL_CROP_CLASS = "BatchImageCropByMaskAdvanced_StDismas";
 
 const FACE_WIDGETS = [
   "face_detector",
@@ -212,6 +211,13 @@ function installNamedWidgetState(nodeType) {
 
 app.registerExtension({
   name: "stdismas.batch_crop_dynamic_widgets",
+  async beforeConfigureGraph(graphData) {
+    for (const node of graphData?.nodes ?? []) {
+      if (node.type === LEGACY_FACE_CROP_CLASS) {
+        node.type = UNIVERSAL_CROP_CLASS;
+      }
+    }
+  },
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (CROP_NODE_CLASSES.has(nodeData?.name)) {
       installNamedWidgetState(nodeType);

@@ -1239,7 +1239,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
         return {
             "required": {
                 "images": ("IMAGE", {"tooltip": "Input image batch (B,H,W,C)"}),
-                "crop_mask": ("MASK", {"tooltip": "Main mask used to compute crop region"}),
                 "tracking_mode": (
                     ["mask", "face_detection"],
                     {
@@ -1434,6 +1433,12 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 ),
             },
             "optional": {
+                "crop_mask": (
+                    "MASK",
+                    {
+                        "tooltip": "Main mask used to compute crop region. Required only when tracking_mode is mask.",
+                    },
+                ),
                 "masks": (
                     "MASK",
                     {
@@ -1534,7 +1539,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
     def crop(
         self,
         images,
-        crop_mask,
         aspect_ratio,
         output_long_side,
         use_long_side,
@@ -1562,6 +1566,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
         size_metric="bbox_fit",
         resolution_mode="manual",
         auto_resolution_cap=768,
+        crop_mask=None,
         masks=None,
         pipe=None,
         identity_reference=None,
@@ -2369,31 +2374,12 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         return (out.to(device=device, dtype=dtype),)
 
 
-class BatchImageCropByMaskOrFaceAdvanced_StDismas(BatchImageCropByMaskAdvanced_StDismas):
-    """Optional-mask entry point for standalone face detection without breaking old graphs."""
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        input_types = super().INPUT_TYPES()
-        required = dict(input_types["required"])
-        optional = dict(input_types["optional"])
-        crop_mask_type = required.pop("crop_mask")
-        optional = {"crop_mask": crop_mask_type, **optional}
-        return {"required": required, "optional": optional}
-
-    def crop(self, *args, **kwargs):
-        kwargs.setdefault("crop_mask", None)
-        return super().crop(*args, **kwargs)
-
-
 NODE_CLASS_MAPPINGS = {
     "BatchImageCropByMaskAdvanced_StDismas": BatchImageCropByMaskAdvanced_StDismas,
-    "BatchImageCropByMaskOrFaceAdvanced_StDismas": BatchImageCropByMaskOrFaceAdvanced_StDismas,
     "BatchImageUncropByMaskAdvanced_StDismas": BatchImageUncropByMaskAdvanced_StDismas,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "BatchImageCropByMaskAdvanced_StDismas": "Batch Image Crop By Mask Advanced (StDismas)",
-    "BatchImageCropByMaskOrFaceAdvanced_StDismas": "Batch Image Crop By Mask or Face Advanced (StDismas)",
     "BatchImageUncropByMaskAdvanced_StDismas": "Batch Image Uncrop By Mask Advanced (StDismas)",
 }

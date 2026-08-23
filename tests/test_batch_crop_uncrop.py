@@ -15,8 +15,9 @@ SPEC = importlib.util.spec_from_file_location("stdismas_crop_nodes", MODULE_PATH
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
+_UNSET = object()
 
-def run_crop(images, crop_mask, **overrides):
+def run_crop(images, crop_mask=_UNSET, **overrides):
     options = dict(
         aspect_ratio="1:1",
         output_long_side=32,
@@ -47,11 +48,10 @@ def run_crop(images, crop_mask, **overrides):
         auto_resolution_cap=768,
     )
     options.update(overrides)
-    return MODULE.BatchImageCropByMaskAdvanced_StDismas().crop(
-        images=images,
-        crop_mask=crop_mask,
-        **options,
-    )
+    kwargs = {"images": images, **options}
+    if crop_mask is not _UNSET:
+        kwargs["crop_mask"] = crop_mask
+    return MODULE.BatchImageCropByMaskAdvanced_StDismas().crop(**kwargs)
 
 
 class CropUncropTests(unittest.TestCase):
@@ -71,9 +71,15 @@ class CropUncropTests(unittest.TestCase):
         self.assertFalse(metadata["frames"][1]["valid"])
 
     def test_tracking_mode_is_the_first_setting(self):
-        required = MODULE.BatchImageCropByMaskAdvanced_StDismas.INPUT_TYPES()["required"]
-        widget_names = [name for name in required if name not in {"images", "crop_mask"}]
+        input_types = MODULE.BatchImageCropByMaskAdvanced_StDismas.INPUT_TYPES()
+        widget_names = [name for name in input_types["required"] if name != "images"]
         self.assertEqual(widget_names[0], "tracking_mode")
+        self.assertNotIn("crop_mask", input_types["required"])
+        self.assertIn("crop_mask", input_types["optional"])
+
+    def test_only_one_universal_crop_node_is_registered(self):
+        self.assertIn("BatchImageCropByMaskAdvanced_StDismas", MODULE.NODE_CLASS_MAPPINGS)
+        self.assertNotIn("BatchImageCropByMaskOrFaceAdvanced_StDismas", MODULE.NODE_CLASS_MAPPINGS)
 
     def test_legacy_strength_controls_every_smoothing_method(self):
         values = MODULE.np.asarray([10.0, 20.0, 5.0, 30.0, 15.0])
@@ -163,6 +169,24 @@ class CropUncropTests(unittest.TestCase):
         self.assertEqual(result[4]["tracking_mode"], "face_detection")
         self.assertGreater(float(result[1].sum()), 0.0)
         self.assertIn("face tracking", result[6])
+
+    def test_face_mode_can_omit_crop_mask_input_entirely(self):
+        prediction = ([[10.0, 12.0, 22.0, 28.0]], [0.9], [0])
+        with (
+            mock.patch.object(MODULE, "_load_face_detector", return_value=object()),
+            mock.patch.object(MODULE, "_predict_boxes", return_value=prediction),
+            mock.patch.object(MODULE, "_release_optional_face_models"),
+        ):
+            result = run_crop(
+                self.images,
+                tracking_mode="face_detection",
+                identity_track=False,
+        )
+        self.assertEqual(result[4]["tracking_mode"], "face_detection")
+
+    def test_mask_mode_still_requires_crop_mask(self):
+        with self.assertRaisesRegex(ValueError, "crop_mask is required"):
+            run_crop(self.images)
 
     def test_identity_reference_selects_the_matching_face(self):
         two_faces = (
