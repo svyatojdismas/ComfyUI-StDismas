@@ -1460,7 +1460,13 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 ),
                 "face_confidence": (
                     "FLOAT",
-                    {"default": 0.35, "min": 0.05, "max": 0.95, "step": 0.05},
+                    {
+                        "default": 0.35,
+                        "min": 0.05,
+                        "max": 0.95,
+                        "step": 0.05,
+                        "tooltip": "Minimum face-detector confidence. Lower finds more faces but may add false positives.",
+                    },
                 ),
                 "face_select": (
                     ["largest", "most_central"],
@@ -1472,7 +1478,13 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 ),
                 "identity_threshold": (
                     "FLOAT",
-                    {"default": 0.28, "min": 0.0, "max": 1.0, "step": 0.01},
+                    {
+                        "default": 0.28,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.01,
+                        "tooltip": "Minimum similarity to accept identity_reference. Higher values make the match stricter.",
+                    },
                 ),
                 "identity_pack": (
                     ["buffalo_l", "buffalo_s"],
@@ -1492,13 +1504,30 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 ),
                 "fallback_head_frac": (
                     "FLOAT",
-                    {"default": 0.5, "min": 0.0, "max": 1.5, "step": 0.05},
+                    {
+                        "default": 0.5,
+                        "min": 0.0,
+                        "max": 1.5,
+                        "step": 0.05,
+                        "tooltip": "Estimated vertical head position inside a fallback person bbox (0 = top, 0.5 = middle).",
+                    },
                 ),
             },
         }
 
     RETURN_TYPES = ("IMAGE", "MASK", "MASK", "IMAGE", "BBOXES", "CROP_PIPE", "STRING", "INT", "INT")
     RETURN_NAMES = ("cropped_images", "cropped_masks", "masks", "visualize", "crop_metadata", "pipe", "report", "canvas_width", "canvas_height")
+    OUTPUT_TOOLTIPS = (
+        "Image batch sampled inside the calculated crop window.",
+        "Main crop mask sampled with the same crop transform.",
+        "Optional extra mask sampled with the same crop transform.",
+        "Source image batch with a crop-frame preview; empty when visualize is disabled.",
+        "Per-frame crop transforms and tracking data for Batch Image Uncrop By Mask Advanced.",
+        "Reusable crop settings and per-frame transforms for another crop node.",
+        "Human-readable crop, tracking, and magnification statistics.",
+        "Final output canvas width in pixels.",
+        "Final output canvas height in pixels.",
+    )
     FUNCTION = "crop"
     CATEGORY = "Comfyui-StDismas/masking"
 
