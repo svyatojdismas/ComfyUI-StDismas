@@ -320,7 +320,9 @@ function addUploadAndPreview(nodeType, nodeData) {
             hidden: false,
             paused: false,
             params: {},
-            muted: app.ui.settings.getSettingValue("VHS.DefaultMute") ?? true,
+            // Match VHS: previews stay muted outside the node, but are audible
+            // while hovered unless the user has explicitly muted previews.
+            muted: app.ui.settings.getSettingValue("VHS.DefaultMute"),
         };
         const previewWidget = node.addDOMWidget("videopreview", "preview", element, {
             serialize: false,
