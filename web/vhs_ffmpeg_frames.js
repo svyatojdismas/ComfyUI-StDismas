@@ -24,6 +24,32 @@ function chainCallback(target, name, callback) {
 }
 
 
+function fitHeight(node) {
+    const computed = node.computeSize?.([node.size[0], node.size[1]]);
+    if (computed) node.setSize([node.size[0], computed[1]]);
+    node.graph?.setDirtyCanvas?.(true, true);
+}
+
+
+function roundToPrecision(number, precision) {
+    const fixed = Number(number).toFixed(precision);
+    return fixed.replace(/\.?0+$/, "");
+}
+
+
+function useVhsNumberWidgets(nodeData) {
+    const inputs = {
+        ...(nodeData?.input?.required || {}),
+        ...(nodeData?.input?.optional || {}),
+    };
+    for (const input of Object.values(inputs)) {
+        if (!input || !["INT", "FLOAT"].includes(input[0])) continue;
+        input[1] ??= {};
+        input[1].widgetType ??= `VHS${input[0]}`;
+    }
+}
+
+
 function splitInputPath(path) {
     const normalized = String(path || "").replaceAll("\\", "/");
     const separator = normalized.lastIndexOf("/");
@@ -39,6 +65,7 @@ function addLoadFormatBehavior(node, nodeData) {
     const formatWidget = node.widgets?.find((widget) => widget.name === "format");
     const formats = nodeData?.input?.optional?.format?.[1]?.formats;
     if (!formatWidget || !formats) return;
+    formatWidget.options.formats = formats;
 
     const controlledNames = new Set([
         "force_rate",
@@ -81,9 +108,37 @@ function addLoadFormatBehavior(node, nodeData) {
             }
             widget.callback?.(widget.value);
         }
+        node.setDirtyCanvas?.(true, true);
     };
 
     chainCallback(formatWidget, "callback", applyFormat);
+
+    const capWidget = node.widgets.find((widget) => widget.name === "frame_load_cap");
+    if (capWidget) {
+        capWidget.annotation = (value) => {
+            const maxFrames = node.video_query?.loaded?.frames;
+            if (!maxFrames || (value && value < maxFrames)) return;
+            const format = formats[formatWidget.value];
+            const divisor = format?.frames?.[0] ?? 1;
+            const remainder = format?.frames?.[1] ?? 0;
+            let loadableFrames = maxFrames;
+            if (maxFrames % divisor !== remainder) {
+                loadableFrames = Math.floor((maxFrames - remainder) / divisor) * divisor
+                    + remainder;
+            }
+            return `${loadableFrames}\u21FD`;
+        };
+    }
+
+    const rateWidget = node.widgets.find((widget) => widget.name === "force_rate");
+    if (rateWidget) {
+        rateWidget.annotation = (value) => {
+            if (value === 0 && node.video_query?.source?.fps !== undefined) {
+                return `${roundToPrecision(node.video_query.source.fps, 2)}\u21FD`;
+            }
+        };
+    }
+
     applyFormat(formatWidget.value);
 }
 
@@ -113,6 +168,104 @@ function addVaeOutputToggle(nodeType) {
 }
 
 
+function addPreviewOptions(nodeType) {
+    chainCallback(nodeType.prototype, "getExtraMenuOptions", function (_, options) {
+        if (!Array.isArray(options)) return;
+        const previewWidget = this.widgets?.find((widget) => widget.name === "videopreview");
+        const params = previewWidget?.value?.params;
+        if (!previewWidget || !params?.filename) return;
+
+        const previewOptions = [];
+        const source = this.video_query?.source;
+        if (source?.size && source?.fps !== undefined && source?.frames !== undefined) {
+            previewOptions.push({
+                content: `${source.size.join("x")}@${source.fps}fps ${source.frames}frames`,
+                disabled: true,
+            });
+        }
+
+        const fullQualityUrl = api.apiURL(
+            `/view?${new URLSearchParams(params).toString()}`,
+        );
+        previewOptions.push(
+            {
+                content: "Open preview",
+                callback: () => window.open(fullQualityUrl, "_blank"),
+            },
+            {
+                content: "Save preview",
+                callback: () => {
+                    const anchor = document.createElement("a");
+                    anchor.href = fullQualityUrl;
+                    anchor.download = params.filename;
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    requestAnimationFrame(() => anchor.remove());
+                },
+            },
+        );
+
+        const pauseLabel = previewWidget.value.paused ? "Resume preview" : "Pause preview";
+        previewOptions.push({
+            content: pauseLabel,
+            callback: () => {
+                if (previewWidget.value.paused) {
+                    previewWidget.videoEl?.play().catch(() => {});
+                } else {
+                    previewWidget.videoEl?.pause();
+                }
+                previewWidget.value.paused = !previewWidget.value.paused;
+            },
+        });
+
+        const visibilityLabel = previewWidget.value.hidden ? "Show preview" : "Hide preview";
+        previewOptions.push({
+            content: visibilityLabel,
+            callback: () => {
+                previewWidget.value.hidden = !previewWidget.value.hidden;
+                previewWidget.parentEl.hidden = previewWidget.value.hidden;
+                if (previewWidget.value.hidden) {
+                    previewWidget.videoEl?.pause();
+                } else if (!previewWidget.value.paused) {
+                    previewWidget.videoEl?.play().catch(() => {});
+                }
+                fitHeight(this);
+            },
+        });
+
+        previewOptions.push({
+            content: "Sync preview",
+            callback: () => {
+                for (const parent of document.getElementsByClassName("vhs_preview")) {
+                    for (const child of parent.children) {
+                        if (child.tagName === "VIDEO") {
+                            child.currentTime = 0;
+                            child.play().catch(() => {});
+                        } else if (child.tagName === "IMG" && child.src) {
+                            child.src = child.src;
+                        }
+                    }
+                }
+            },
+        });
+
+        const muteLabel = previewWidget.value.muted ? "Unmute Preview" : "Mute Preview";
+        previewOptions.push({
+            content: muteLabel,
+            callback: () => {
+                previewWidget.value.muted = !previewWidget.value.muted;
+                if (previewWidget.videoEl?.matches(":hover")) {
+                    previewWidget.videoEl.muted = previewWidget.value.muted;
+                }
+            },
+        });
+
+        if (options.length && options[0] !== null) previewOptions.push(null);
+        options.unshift(...previewOptions);
+    });
+}
+
+
 function addUploadAndPreview(nodeType, nodeData) {
     chainCallback(nodeType.prototype, "onNodeCreated", function () {
         const node = this;
@@ -127,53 +280,117 @@ function addUploadAndPreview(nodeType, nodeData) {
         });
         document.body.appendChild(fileInput);
 
-        const container = document.createElement("div");
-        Object.assign(container.style, {
+        const element = document.createElement("div");
+        Object.assign(element.style, {
             width: "100%",
-            minHeight: "150px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
             boxSizing: "border-box",
-            padding: "4px",
         });
+        const previewParent = document.createElement("div");
+        previewParent.className = "vhs_preview stdismas_vhs_preview";
+        previewParent.style.width = "100%";
+        previewParent.hidden = true;
+
         const video = document.createElement("video");
-        video.controls = true;
+        video.controls = false;
+        video.autoplay = true;
         video.loop = true;
         video.muted = true;
         video.playsInline = true;
         Object.assign(video.style, {
             width: "100%",
-            minHeight: "120px",
-            maxHeight: "360px",
-            objectFit: "contain",
-            background: "#111",
-            borderRadius: "4px",
+            height: "auto",
+            display: "block",
         });
-        const status = document.createElement("div");
-        status.textContent = "Choose or drop a video";
-        Object.assign(status.style, {
-            color: "var(--descrip-text, #aaa)",
-            fontSize: "11px",
-            textAlign: "center",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-        });
-        container.append(video, status);
-        node.addDOMWidget("videopreview", "video", container, {
+        const image = document.createElement("img");
+        image.style.width = "100%";
+        image.style.display = "block";
+        image.hidden = true;
+        previewParent.append(video, image);
+        element.appendChild(previewParent);
+
+        const fileButton = node.addWidget(
+            "button",
+            "choose video to upload",
+            null,
+            () => fileInput.click(),
+        );
+        fileButton.serialize = false;
+
+        element.value = {
+            hidden: false,
+            paused: false,
+            params: {},
+            muted: app.ui.settings.getSettingValue("VHS.DefaultMute") ?? true,
+        };
+        const previewWidget = node.addDOMWidget("videopreview", "preview", element, {
             serialize: false,
             hideOnZoom: false,
-            getMinHeight: () => 170,
+            getValue: () => element.value,
+            setValue: (value) => {
+                element.value = value;
+            },
+        });
+        previewWidget.value = element.value;
+        previewWidget.parentEl = previewParent;
+        previewWidget.videoEl = video;
+        previewWidget.imgEl = image;
+        previewWidget.computeSize = function (width) {
+            if (this.aspectRatio && !this.parentEl.hidden) {
+                const height = Math.max((node.size[0] - 20) / this.aspectRatio + 10, 0);
+                this.computedHeight = height + 10;
+                return [width, height];
+            }
+            return [width, -4];
+        };
+
+        for (const [eventName, canvasHandler] of [
+            ["contextmenu", "_mousedown_callback"],
+            ["pointerdown", "_mousedown_callback"],
+            ["mousewheel", "_mousewheel_callback"],
+            ["pointermove", "_mousemove_callback"],
+            ["pointerup", "_mouseup_callback"],
+        ]) {
+            element.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                return app.canvas?.[canvasHandler]?.(event);
+            }, true);
+        }
+        element.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+            app.dragOverNode = node;
+        });
+
+        video.addEventListener("loadedmetadata", () => {
+            previewWidget.aspectRatio = video.videoWidth / video.videoHeight;
+            previewParent.hidden = false;
+            fitHeight(node);
+            if (!previewWidget.value.paused) video.play().catch(() => {});
+        });
+        video.addEventListener("error", () => {
+            previewParent.hidden = true;
+            fitHeight(node);
+        });
+        image.addEventListener("load", () => {
+            previewWidget.aspectRatio = image.naturalWidth / image.naturalHeight;
+            previewParent.hidden = false;
+            fitHeight(node);
+        });
+        video.addEventListener("mouseenter", () => {
+            video.muted = previewWidget.value.muted;
+        });
+        video.addEventListener("mouseleave", () => {
+            video.muted = true;
         });
 
         let previewTimer = null;
+        let queryVersion = 0;
         const previewParams = () => {
             const path = videoWidget.value;
             if (!path) return null;
             const reference = splitInputPath(path);
             const extension = reference.filename.split(".").pop()?.toLowerCase() || "mp4";
-            const params = new URLSearchParams({
+            return {
                 filename: reference.filename,
                 subfolder: reference.subfolder,
                 type: "input",
@@ -185,36 +402,91 @@ function addUploadAndPreview(nodeType, nodeData) {
                     node.widgets.find((w) => w.name === "skip_first_frames")?.value || 0,
                 select_every_nth:
                     node.widgets.find((w) => w.name === "select_every_nth")?.value || 1,
-                deadline: "realtime",
-                timestamp: Date.now(),
-            });
-            const width = Number(
-                node.widgets.find((w) => w.name === "custom_width")?.value || 0,
-            );
-            const height = Number(
-                node.widgets.find((w) => w.name === "custom_height")?.value || 0,
-            );
-            const targetWidth = Math.max(Math.round((node.size?.[0] || 256) * 2), 256);
-            if (width > 0 && height > 0) {
-                params.set("force_size", `${targetWidth}x${Math.round(targetWidth / (width / height))}`);
-            } else {
-                params.set("force_size", `${targetWidth}x?`);
-            }
-            return params;
+                custom_width:
+                    node.widgets.find((w) => w.name === "custom_width")?.value || 0,
+                custom_height:
+                    node.widgets.find((w) => w.name === "custom_height")?.value || 0,
+            };
         };
 
-        const updatePreview = () => {
+        const queryVideo = async (params) => {
+            const version = ++queryVersion;
+            delete node.video_query;
+            node.setDirtyCanvas?.(true, true);
+            try {
+                const response = await api.fetchApi(
+                    `/vhs/queryvideo?${new URLSearchParams(params).toString()}`,
+                );
+                const query = await response.json();
+                if (version !== queryVersion || String(videoWidget.value).replaceAll("\\", "/") !== [
+                    params.subfolder,
+                    params.filename,
+                ].filter(Boolean).join("/")) return;
+                node.video_query = query;
+                node.setDirtyCanvas?.(true, true);
+            } catch (_) {
+                // A missing annotation should not prevent the preview itself.
+            }
+        };
+
+        const updatePreview = async () => {
             const params = previewParams();
             if (!params) {
+                queryVersion += 1;
+                delete node.video_query;
                 video.pause();
                 video.removeAttribute("src");
                 video.load();
-                status.textContent = "Choose or drop a video";
+                image.removeAttribute("src");
+                previewParent.hidden = true;
+                previewWidget.aspectRatio = null;
+                fitHeight(node);
                 return;
             }
-            status.textContent = videoWidget.value;
-            video.src = api.apiURL(`/vhs/viewvideo?${params.toString()}`);
+            previewWidget.value.params = { ...params };
+            previewParent.hidden = previewWidget.value.hidden;
+            queryVideo(params);
+
+            const advancedSetting = app.ui.settings.getSettingValue("VHS.AdvancedPreviews");
+            const advancedPreview = advancedSetting !== "Never";
+            const extension = params.format.split("/")[1];
+            if (!advancedPreview && extension === "gif") {
+                image.src = api.apiURL(`/view?${new URLSearchParams({
+                    ...params,
+                    timestamp: Date.now(),
+                }).toString()}`);
+                image.hidden = false;
+                video.hidden = true;
+                return;
+            }
+
+            const sourceParams = { ...params, timestamp: Date.now() };
+            let endpoint = "/view";
+            if (advancedPreview) {
+                let targetWidth = Math.max((node.size[0] - 20) * 2, 256);
+                const minimumWidth = Number(
+                    app.ui.settings.getSettingValue("VHS.AdvancedPreviewsMinWidth") || 0,
+                );
+                targetWidth = Math.max(targetWidth, minimumWidth);
+                if (!params.custom_width || !params.custom_height) {
+                    sourceParams.force_size = `${targetWidth}x?`;
+                } else {
+                    const aspectRatio = params.custom_width / params.custom_height;
+                    sourceParams.force_size = `${targetWidth}x${targetWidth / aspectRatio}`;
+                }
+                sourceParams.deadline = app.ui.settings.getSettingValue(
+                    "VHS.AdvancedPreviewsDeadline",
+                ) || "realtime";
+                endpoint = "/vhs/viewvideo";
+            }
+            video.autoplay = !previewWidget.value.paused && !previewWidget.value.hidden;
+            video.hidden = false;
+            image.hidden = true;
+            video.src = api.apiURL(
+                `${endpoint}?${new URLSearchParams(sourceParams).toString()}`,
+            );
             video.load();
+            if (video.autoplay) video.play().catch(() => {});
         };
         const schedulePreview = (immediate = false) => {
             if (previewTimer) clearTimeout(previewTimer);
@@ -234,10 +506,13 @@ function addUploadAndPreview(nodeType, nodeData) {
         };
         const uploadFile = async (file) => {
             if (!file) return;
-            status.textContent = `Uploading ${file.name}…`;
             const temporaryUrl = URL.createObjectURL(file);
+            previewParent.hidden = false;
+            video.hidden = false;
+            image.hidden = true;
             video.src = temporaryUrl;
             video.load();
+            video.play().catch(() => {});
             try {
                 const body = new FormData();
                 body.append("image", file);
@@ -256,8 +531,7 @@ function addUploadAndPreview(nodeType, nodeData) {
                     .replaceAll("\\", "/");
                 choosePath(path);
             } catch (error) {
-                status.textContent = error.message || "Video upload failed";
-                alert(status.textContent);
+                alert(error.message || "Video upload failed");
             } finally {
                 URL.revokeObjectURL(temporaryUrl);
                 fileInput.value = "";
@@ -265,13 +539,6 @@ function addUploadAndPreview(nodeType, nodeData) {
         };
 
         fileInput.onchange = () => uploadFile(fileInput.files?.[0]);
-        const uploadWidget = node.addWidget(
-            "button",
-            "choose video to upload",
-            null,
-            () => fileInput.click(),
-        );
-        uploadWidget.serialize = false;
 
         chainCallback(videoWidget, "callback", () => schedulePreview(true));
         for (const name of [
@@ -303,13 +570,12 @@ function addUploadAndPreview(nodeType, nodeData) {
 
         chainCallback(node, "onRemoved", () => {
             if (previewTimer) clearTimeout(previewTimer);
+            queryVersion += 1;
             video.pause();
             fileInput.remove();
         });
         addLoadFormatBehavior(node, nodeData);
         schedulePreview(true);
-        const minSize = node.computeSize?.() || node.size;
-        node.setSize([Math.max(node.size[0], 300), Math.max(minSize[1], 430)]);
     });
 }
 
@@ -318,7 +584,9 @@ app.registerExtension({
     name: "StDismas.VHSFFmpegFrames",
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData?.name !== NODE_NAME) return;
+        useVhsNumberWidgets(nodeData);
         addVaeOutputToggle(nodeType);
+        addPreviewOptions(nodeType);
         addUploadAndPreview(nodeType, nodeData);
     },
 });
