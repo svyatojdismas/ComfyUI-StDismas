@@ -1,0 +1,54 @@
+{
+  "main_pass": [
+    "-n",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    [
+      "pix_fmt",
+      ["yuv420p", "yuv420p10le"]
+    ],
+    "-crf",
+    [
+      "crf",
+      "INT",
+      {
+        "default": 19,
+        "min": 0,
+        "max": 100,
+        "step": 1
+      }
+    ],
+    "-vf",
+    "zscale=dither=error_diffusion:filter=spline36:range=full:primaries=709:transfer=709:matrix=709:rangein=full:primariesin=709:transferin=709:matrixin=709:agamma=false",
+    "-color_range",
+    "pc",
+    "-colorspace",
+    "bt709",
+    "-color_primaries",
+    "bt709",
+    "-color_trc",
+    "bt709",
+    "-sws_flags",
+    "accurate_rnd+full_chroma_int+full_chroma_inp+bitexact",
+    "-sws_dither",
+    "ed",
+    "-src_range",
+    "1",
+    "-dst_range",
+    "1"
+  ],
+  "fake_trc": "bt709",
+  "audio_pass": ["-c:a", "aac"],
+  "save_metadata": [
+    "save_metadata",
+    "BOOLEAN",
+    {"default": true}
+  ],
+  "trim_to_audio": [
+    "trim_to_audio",
+    "BOOLEAN",
+    {"default": false}
+  ],
+  "extension": "mp4"
+}

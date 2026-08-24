@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 Comfyui-StDismas nodes auto-loader.
 
 This mirrors the KJNodes approach: keep node implementations as individual .py files
-inside ./nodes and import them dynamically. Any module that defines
+or packages inside ./nodes and import them dynamically. Any module that defines
 NODE_CLASS_MAPPINGS / NODE_DISPLAY_NAME_MAPPINGS will be merged.
 
 If a module fails to import, it will be skipped (so one broken file doesn't hide the whole pack).
@@ -24,12 +24,18 @@ def _merge(m):
 _pkg = __package__  # "Comfyui-StDismas.nodes"
 _here = os.path.dirname(__file__)
 
-for fn in sorted(os.listdir(_here)):
-    if not fn.endswith(".py"):
+for name in sorted(os.listdir(_here)):
+    path = os.path.join(_here, name)
+    if os.path.isfile(path):
+        if not name.endswith(".py") or name.startswith("_") or name == "__init__.py":
+            continue
+        modname = name[:-3]
+    elif os.path.isdir(path):
+        if name.startswith("_") or not os.path.isfile(os.path.join(path, "__init__.py")):
+            continue
+        modname = name
+    else:
         continue
-    if fn.startswith("_") or fn == "__init__.py":
-        continue
-    modname = fn[:-3]
     try:
         m = importlib.import_module(f".{modname}", package=_pkg)
         _merge(m)
