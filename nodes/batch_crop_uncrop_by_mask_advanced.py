@@ -2020,7 +2020,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
             "required": {
                 "cropped_images": ("IMAGE", {"tooltip": "Cropped image batch to place back into original frame"}),
                 "crop_metadata": ("BBOXES", {"tooltip": "Metadata produced by the crop node"}),
-                "mode": (["overlay_full", "overlay_by_mask"], {"default": "overlay_full", "tooltip": "Overlay full crop or blend using crop mask"}),
+                "mode": (["overlay_by_mask", "overlay_full"], {"default": "overlay_by_mask", "tooltip": "Blend using a crop/square mask or overlay the full crop"}),
                 "blend": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Blend strength for uncrop result"}),
             },
             "optional": {
@@ -2058,7 +2058,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         self,
         cropped_images,
         crop_metadata,
-        mode="overlay_full",
+        mode="overlay_by_mask",
         blend=1.0,
         base_images=None,
         original_images=None,

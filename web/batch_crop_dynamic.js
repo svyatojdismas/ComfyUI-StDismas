@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 
 const CROP_NODE_CLASSES = new Set(["BatchImageCropByMaskAdvanced_StDismas"]);
+const UNCROP_NODE_CLASSES = new Set(["BatchImageUncropByMaskAdvanced_StDismas"]);
 const LEGACY_FACE_CROP_CLASS = "BatchImageCropByMaskOrFaceAdvanced_StDismas";
 const UNIVERSAL_CROP_CLASS = "BatchImageCropByMaskAdvanced_StDismas";
 
@@ -15,6 +16,18 @@ const FACE_WIDGETS = [
   "keep_face_models_loaded",
   "fallback_detector",
   "fallback_head_frac",
+];
+
+const SQUARE_MASK_WIDGETS = [
+  "square_mask_inset_left_px",
+  "square_mask_inset_right_px",
+  "square_mask_inset_top_px",
+  "square_mask_inset_bottom_px",
+  "square_mask_fade_left_px",
+  "square_mask_fade_right_px",
+  "square_mask_fade_top_px",
+  "square_mask_fade_bottom_px",
+  "square_mask_units",
 ];
 
 // Widget order used by the first FaceRefine-upgrade build. Old ComfyUI workflows
@@ -171,6 +184,23 @@ function setupCropNode(node) {
   refresh();
 }
 
+function refreshUncropWidgets(node) {
+  const squareMaskEnabled = Boolean(findWidget(node, "use_square_mask")?.value);
+  for (const name of SQUARE_MASK_WIDGETS) {
+    setWidgetVisible(findWidget(node, name), squareMaskEnabled);
+  }
+  resizeNode(node);
+}
+
+function setupUncropNode(node) {
+  if (node.__stdismasDynamicUncrop) return;
+  node.__stdismasDynamicUncrop = true;
+
+  const refresh = () => refreshUncropWidgets(node);
+  hookWidget(node, "use_square_mask", refresh);
+  refresh();
+}
+
 function installNamedWidgetState(nodeType) {
   const prototype = nodeType.prototype;
   if (prototype.__stdismasNamedWidgetState) return;
@@ -227,6 +257,9 @@ app.registerExtension({
     if (CROP_NODE_CLASSES.has(node.comfyClass)) {
       // Let ComfyUI restore saved widget values before applying visibility.
       setTimeout(() => setupCropNode(node), 50);
+    } else if (UNCROP_NODE_CLASSES.has(node.comfyClass)) {
+      // Let ComfyUI restore saved widget values before applying visibility.
+      setTimeout(() => setupUncropNode(node), 50);
     }
   },
 });

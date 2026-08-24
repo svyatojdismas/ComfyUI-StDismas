@@ -762,9 +762,11 @@ Legacy alias для `base_images`.
 Варианты:
 
 ```text
-overlay_full
 overlay_by_mask
+overlay_full
 ```
+
+Значение по умолчанию: `overlay_by_mask`.
 
 ---
 
@@ -875,6 +877,8 @@ Legacy-параметр.
 Boolean.
 
 Определяет, использовать ли прямоугольную alpha-mask вместо `crop_masks`.
+
+При переключении этого параметра интерфейс динамически изменяет высоту ноды: настройки `square_mask_*` отображаются только при `true`.
 
 ### Если `false`
 
