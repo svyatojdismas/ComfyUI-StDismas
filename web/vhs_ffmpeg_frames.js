@@ -3,6 +3,14 @@ import { api } from "../../scripts/api.js";
 
 
 const NODE_NAME = "StDismas_LoadVideoFFmpegFrames";
+const VIDEO_EXTENSIONS = new Set(["webm", "mp4", "mkv", "gif", "mov"]);
+const VIDEO_MIME_TYPES = new Set([
+    "video/webm",
+    "video/mp4",
+    "video/x-matroska",
+    "video/quicktime",
+    "image/gif",
+]);
 const LEGACY_WIDGET_NAMES = [
     "video",
     "force_rate",
@@ -129,6 +137,24 @@ function splitInputPath(path) {
         filename: normalized.slice(separator + 1),
         subfolder: normalized.slice(0, separator),
     };
+}
+
+
+function hasDraggedFiles(event) {
+    const types = event?.dataTransfer?.types;
+    return Boolean(
+        event?.dataTransfer?.files?.length ||
+        types?.includes?.("Files") ||
+        types?.contains?.("Files"),
+    );
+}
+
+
+function isSupportedVideoFile(file) {
+    if (!file) return false;
+    if (VIDEO_MIME_TYPES.has(file.type)) return true;
+    const extension = file.name?.split(".").pop()?.toLowerCase();
+    return VIDEO_EXTENSIONS.has(extension);
 }
 
 
@@ -590,7 +616,7 @@ function addUploadAndPreview(nodeType, nodeData) {
             schedulePreview(true);
         };
         const uploadFile = async (file) => {
-            if (!file) return;
+            if (!isSupportedVideoFile(file)) return false;
             const temporaryUrl = URL.createObjectURL(file);
             previewParent.hidden = false;
             video.hidden = false;
@@ -615,8 +641,10 @@ function addUploadAndPreview(nodeType, nodeData) {
                     .join("/")
                     .replaceAll("\\", "/");
                 choosePath(path);
+                return true;
             } catch (error) {
                 alert(error.message || "Video upload failed");
+                return false;
             } finally {
                 URL.revokeObjectURL(temporaryUrl);
                 fileInput.value = "";
@@ -624,6 +652,14 @@ function addUploadAndPreview(nodeType, nodeData) {
         };
 
         fileInput.onchange = () => uploadFile(fileInput.files?.[0]);
+        element.addEventListener("drop", async (event) => {
+            const file = event.dataTransfer?.files?.[0];
+            if (!isSupportedVideoFile(file)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (app.dragOverNode === node) app.dragOverNode = null;
+            await uploadFile(file);
+        }, true);
 
         chainCallback(videoWidget, "callback", () => schedulePreview(true));
         for (const name of [
@@ -640,13 +676,21 @@ function addUploadAndPreview(nodeType, nodeData) {
 
         const previousDragOver = node.onDragOver;
         node.onDragOver = function (event) {
-            if (event?.dataTransfer?.files?.length) return true;
+            if (hasDraggedFiles(event)) return true;
             return previousDragOver?.call(this, event);
+        };
+        const previousDragDrop = node.onDragDrop;
+        node.onDragDrop = async function (event) {
+            if (!hasDraggedFiles(event)) {
+                return await previousDragDrop?.call(this, event) ?? false;
+            }
+            const file = event.dataTransfer?.files?.[0];
+            if (isSupportedVideoFile(file)) return await uploadFile(file);
+            return await previousDragDrop?.call(this, event) ?? false;
         };
         const previousDropFile = node.onDropFile;
         node.onDropFile = function (file) {
-            const extension = file?.name?.split(".").pop()?.toLowerCase();
-            if (["webm", "mp4", "mkv", "gif", "mov"].includes(extension)) {
+            if (isSupportedVideoFile(file)) {
                 uploadFile(file);
                 return true;
             }
