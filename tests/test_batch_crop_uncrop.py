@@ -81,6 +81,12 @@ class CropUncropTests(unittest.TestCase):
         self.assertIn("BatchImageCropByMaskAdvanced_StDismas", MODULE.NODE_CLASS_MAPPINGS)
         self.assertNotIn("BatchImageCropByMaskOrFaceAdvanced_StDismas", MODULE.NODE_CLASS_MAPPINGS)
 
+    def test_uncrop_defaults_to_overlay_by_mask(self):
+        input_types = MODULE.BatchImageUncropByMaskAdvanced_StDismas.INPUT_TYPES()
+        choices, options = input_types["required"]["mode"]
+        self.assertEqual(choices[0], "overlay_by_mask")
+        self.assertEqual(options["default"], "overlay_by_mask")
+
     def test_legacy_strength_controls_every_smoothing_method(self):
         values = MODULE.np.asarray([10.0, 20.0, 5.0, 30.0, 15.0])
         for method in ("gaussian", "savgol", "moving_average", "ema"):
