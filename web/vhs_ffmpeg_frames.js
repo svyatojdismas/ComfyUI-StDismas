@@ -3,6 +3,16 @@ import { api } from "../../scripts/api.js";
 
 
 const NODE_NAME = "StDismas_LoadVideoFFmpegFrames";
+const LEGACY_WIDGET_NAMES = [
+    "video",
+    "force_rate",
+    "custom_width",
+    "custom_height",
+    "frame_load_cap",
+    "skip_first_frames",
+    "select_every_nth",
+    "format",
+];
 const VIDEO_ACCEPT = [
     "video/webm",
     "video/mp4",
@@ -47,6 +57,67 @@ function useVhsNumberWidgets(nodeData) {
         input[1] ??= {};
         input[1].widgetType ??= `VHS${input[0]}`;
     }
+}
+
+
+function addNamedWidgetState(nodeType) {
+    chainCallback(nodeType.prototype, "onNodeCreated", function () {
+        chainCallback(this, "onConfigure", function (info) {
+            if (!this.widgets || !info?.widgets_values ||
+                typeof info.widgets_values !== "object") return;
+
+            let widgetValues = info.widgets_values;
+            if (Array.isArray(widgetValues)) {
+                widgetValues = Object.fromEntries(
+                    LEGACY_WIDGET_NAMES
+                        .slice(0, widgetValues.length)
+                        .map((name, index) => [name, widgetValues[index]]),
+                );
+            }
+
+            const restoreOrder = [...this.widgets].sort((left, right) => {
+                if (left.name === "format") return -1;
+                if (right.name === "format") return 1;
+                if (left.name === "videopreview") return 1;
+                if (right.name === "videopreview") return -1;
+                return 0;
+            });
+            for (const widget of restoreOrder) {
+                if (widget.type === "button" ||
+                    !Object.prototype.hasOwnProperty.call(widgetValues, widget.name)) {
+                    continue;
+                }
+                const restoredValue = widgetValues[widget.name];
+                if (widget.name === "videopreview" && restoredValue &&
+                    typeof restoredValue === "object") {
+                    const currentValue = widget.value && typeof widget.value === "object"
+                        ? widget.value
+                        : {};
+                    widget.value = {
+                        ...currentValue,
+                        ...restoredValue,
+                        params: {
+                            ...(currentValue.params || {}),
+                            ...(restoredValue.params || {}),
+                        },
+                    };
+                } else {
+                    widget.value = restoredValue;
+                }
+                widget.callback?.(widget.value);
+            }
+        });
+
+        chainCallback(this, "onSerialize", function (info) {
+            if (!this.widgets) return;
+            info.widgets_values = {};
+            for (const widget of this.widgets) {
+                if (widget.type !== "button") {
+                    info.widgets_values[widget.name] = widget.value;
+                }
+            }
+        });
+    });
 }
 
 
@@ -172,7 +243,16 @@ function addPreviewOptions(nodeType) {
     chainCallback(nodeType.prototype, "getExtraMenuOptions", function (_, options) {
         if (!Array.isArray(options)) return;
         const previewWidget = this.widgets?.find((widget) => widget.name === "videopreview");
-        const params = previewWidget?.value?.params;
+        let params = previewWidget?.value?.params;
+        if (previewWidget && !params?.filename) {
+            const restoredParams = this.getVideoPreviewParams?.();
+            if (restoredParams?.filename) {
+                previewWidget.value ??= {};
+                previewWidget.value.params = { ...restoredParams };
+                params = previewWidget.value.params;
+                this.refreshVideoPreview?.();
+            }
+        }
         if (!previewWidget || !params?.filename) return;
 
         const previewOptions = [];
@@ -494,6 +574,9 @@ function addUploadAndPreview(nodeType, nodeData) {
             if (previewTimer) clearTimeout(previewTimer);
             previewTimer = setTimeout(updatePreview, immediate ? 0 : 150);
         };
+        previewWidget.callback = () => schedulePreview(true);
+        node.getVideoPreviewParams = previewParams;
+        node.refreshVideoPreview = () => schedulePreview(true);
 
         const addOption = (path) => {
             const values = videoWidget.options?.values;
@@ -576,6 +659,11 @@ function addUploadAndPreview(nodeType, nodeData) {
             video.pause();
             fileInput.remove();
         });
+        chainCallback(node, "onAdded", () => {
+            if (!fileInput.isConnected) document.body.appendChild(fileInput);
+            schedulePreview(true);
+        });
+        chainCallback(node, "onConfigure", () => schedulePreview(true));
         addLoadFormatBehavior(node, nodeData);
         schedulePreview(true);
     });
@@ -587,6 +675,7 @@ app.registerExtension({
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData?.name !== NODE_NAME) return;
         useVhsNumberWidgets(nodeData);
+        addNamedWidgetState(nodeType);
         addVaeOutputToggle(nodeType);
         addPreviewOptions(nodeType);
         addUploadAndPreview(nodeType, nodeData);
