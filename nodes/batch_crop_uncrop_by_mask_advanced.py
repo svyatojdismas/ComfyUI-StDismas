@@ -22,6 +22,8 @@ ASPECT_RATIO_CHOICES = [
     "5:4",
     "2:3",
     "3:2",
+    "21:9",
+    "9:21",
 ]
 
 SMOOTHING_METHODS = ["gaussian", "savgol", "moving_average", "ema", "none"]
@@ -31,6 +33,26 @@ COLOR_MATCH_MODES = ["off", "mean", "mean_std", "luminance"]
 
 _FACE_DETECTOR_CACHE = {}
 _FACE_RECOGNISER_CACHE = {}
+
+
+def _is_output_connected(prompt, unique_id, output_index: int) -> bool:
+    """Return whether an output slot is consumed anywhere in the queued graph."""
+    if not isinstance(prompt, dict) or unique_id is None:
+        return False
+
+    source_id = str(unique_id)
+    for node in prompt.values():
+        if not isinstance(node, dict):
+            continue
+        for value in (node.get("inputs") or {}).values():
+            if (
+                isinstance(value, (list, tuple))
+                and len(value) >= 2
+                and str(value[0]) == source_id
+                and value[1] == output_index
+            ):
+                return True
+    return False
 
 
 def _interrupt_if_requested():
@@ -583,6 +605,20 @@ def _gaussian_blur_mask(mask_nchw: torch.Tensor, feather_px: int) -> torch.Tenso
     return result.clamp(0.0, 1.0)
 
 
+def _dilate_mask(mask_nchw: torch.Tensor, expand_px: int) -> torch.Tensor:
+    """Expand a one-channel mask by ``expand_px`` pixels on every side."""
+    radius = max(0, int(expand_px))
+    if radius <= 0:
+        return mask_nchw.clamp(0.0, 1.0)
+    kernel_size = radius * 2 + 1
+    return F.max_pool2d(
+        mask_nchw.float(),
+        kernel_size=kernel_size,
+        stride=1,
+        padding=radius,
+    ).clamp(0.0, 1.0).to(mask_nchw.dtype)
+
+
 def _feather_alpha(alpha_hw: torch.Tensor, feather_px: int) -> torch.Tensor:
     return _gaussian_blur_mask(alpha_hw.unsqueeze(0).unsqueeze(0), feather_px).squeeze(0).squeeze(0)
 
@@ -810,7 +846,9 @@ CROP_PIPE_VERSION = "crop_by_mask_pipe_v1"
 
 CROP_PIPE_OVERRIDABLE_KEYS = (
     "aspect_ratio",
-    "output_long_side",
+    "use_custom_aspect_ratio",
+    "custom_aspect_ratio",
+    "output_resolution_side",
     "use_long_side",
     "use_custom_resolution",
     "width",
@@ -1250,7 +1288,15 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     ASPECT_RATIO_CHOICES,
                     {"default": "16:9", "tooltip": "Output aspect ratio"},
                 ),
-                "output_long_side": (
+                "use_custom_aspect_ratio": (
+                    "BOOLEAN",
+                    {"default": False, "tooltip": "Use custom_aspect_ratio instead of the preset aspect ratio."},
+                ),
+                "custom_aspect_ratio": (
+                    "STRING",
+                    {"default": "16:9", "tooltip": "Custom output aspect ratio in W:H format, for example 2.39:1."},
+                ),
+                "output_resolution_side": (
                     "INT",
                     {
                         "default": 1024,
@@ -1264,14 +1310,14 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     "BOOLEAN",
                     {
                         "default": True,
-                        "tooltip": "If enabled, output_long_side controls the long side; if disabled, it controls the short side",
+                        "tooltip": "If enabled, output_resolution_side controls the long side; if disabled, it controls the short side",
                     },
                 ),
                 "use_custom_resolution": (
                     "BOOLEAN",
                     {
                         "default": False,
-                        "tooltip": "If enabled, use custom width and height for the crop output instead of aspect_ratio/output_long_side",
+                        "tooltip": "If enabled, use custom width and height for the crop output instead of aspect_ratio/output_resolution_side",
                     },
                 ),
                 "width": (
@@ -1297,12 +1343,30 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 "margin_scale": (
                     "FLOAT",
                     {
-                        "default": 1.0,
+                        "default": 2.0,
                         "min": 0.0,
-                        "max": 10.0,
+                        "max": 20.0,
                         "step": 0.01,
                         "tooltip": "Expands mask bbox before cropping",
                     },
+                ),
+                "size_metric": (
+                    SIZE_METRICS,
+                    {
+                        "default": "bbox_fit",
+                        "tooltip": "bbox_fit is generic. height is more stable for faces turning in profile.",
+                    },
+                ),
+                "resolution_mode": (
+                    RESOLUTION_MODES,
+                    {
+                        "default": "manual",
+                        "tooltip": "manual keeps the selected canvas. auto_no_downscale sizes to the largest source crop. auto_capped does the same up to auto_resolution_cap.",
+                    },
+                ),
+                "auto_resolution_cap": (
+                    "INT",
+                    {"default": 768, "min": 128, "max": 8192, "step": 32, "tooltip": "Maximum long side for auto_capped."},
                 ),
                 "smooth_center": (
                     "BOOLEAN",
@@ -1382,54 +1446,29 @@ class BatchImageCropByMaskAdvanced_StDismas:
                 "fit_frame_bounds": (
                     "BOOLEAN",
                     {
-                        "default": False,
+                        "default": True,
                         "tooltip": "Keep the crop window fully inside the source frame while preserving aspect ratio",
                     },
                 ),
                 "divisible_by": (
                     "INT",
                     {
-                        "default": 1,
+                        "default": 2,
                         "min": 1,
                         "max": 1024,
                         "step": 1,
                         "tooltip": "Make both output crop dimensions divisible by this value",
                     },
                 ),
-                "enable_visualize": (
-                    "BOOLEAN",
-                    {
-                        "default": False,
-                        "tooltip": "Draw full-frame crop preview. Disable for better speed and much lower memory use on video batches.",
-                    },
-                ),
                 "crop_chunk_size": (
                     "INT",
                     {
-                        "default": 16,
+                        "default": 128,
                         "min": 1,
-                        "max": 256,
+                        "max": 1024,
                         "step": 1,
                         "tooltip": "How many frames are sampled per grid_sample batch. Lower uses less memory; higher can be faster.",
                     },
-                ),
-                "size_metric": (
-                    SIZE_METRICS,
-                    {
-                        "default": "bbox_fit",
-                        "tooltip": "bbox_fit is generic. height is more stable for faces turning in profile.",
-                    },
-                ),
-                "resolution_mode": (
-                    RESOLUTION_MODES,
-                    {
-                        "default": "manual",
-                        "tooltip": "manual keeps the selected canvas. auto_no_downscale sizes to the largest source crop. auto_capped does the same up to auto_resolution_cap.",
-                    },
-                ),
-                "auto_resolution_cap": (
-                    "INT",
-                    {"default": 768, "min": 128, "max": 8192, "step": 32, "tooltip": "Maximum long side for auto_capped."},
                 ),
             },
             "optional": {
@@ -1450,7 +1489,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     {
                         "tooltip": (
                             "Pipe from another Batch Image Crop By Mask Advanced node. "
-                            "Overrides all crop settings except interpolation, enable_visualize and crop_chunk_size. "
+                            "Overrides all crop settings except interpolation and crop_chunk_size. "
                             "Also reuses computed crop transforms for identical cropping."
                         )
                     },
@@ -1518,16 +1557,21 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     },
                 ),
             },
+            "hidden": {
+                "prompt": "PROMPT",
+                "unique_id": "UNIQUE_ID",
+            },
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "MASK", "IMAGE", "BBOXES", "CROP_PIPE", "STRING", "INT", "INT")
-    RETURN_NAMES = ("cropped_images", "cropped_masks", "masks", "visualize", "crop_metadata", "pipe", "report", "canvas_width", "canvas_height")
+    RETURN_TYPES = ("IMAGE", "MASK", "MASK", "IMAGE", "BBOXES", "BOUNDING_BOX", "CROP_PIPE", "STRING", "INT", "INT")
+    RETURN_NAMES = ("cropped_images", "cropped_masks", "masks", "visualize", "crop_metadata", "bboxes", "pipe", "report", "canvas_width", "canvas_height")
     OUTPUT_TOOLTIPS = (
         "Image batch sampled inside the calculated crop window.",
         "Main crop mask sampled with the same crop transform.",
         "Optional extra mask sampled with the same crop transform.",
-        "Source image batch with a crop-frame preview; empty when visualize is disabled.",
+        "Source image batch with a crop-frame preview. It is rendered only when this output is connected.",
         "Per-frame crop transforms and tracking data for Batch Image Uncrop By Mask Advanced.",
+        "Per-frame crop windows as [[{x, y, width, height}]], compatible with native BOUNDING_BOX inputs",
         "Reusable crop settings and per-frame transforms for another crop node.",
         "Human-readable crop, tracking, and magnification statistics.",
         "Final output canvas width in pixels.",
@@ -1540,7 +1584,9 @@ class BatchImageCropByMaskAdvanced_StDismas:
         self,
         images,
         aspect_ratio,
-        output_long_side,
+        use_custom_aspect_ratio,
+        custom_aspect_ratio,
+        output_resolution_side,
         use_long_side,
         use_custom_resolution,
         width,
@@ -1557,8 +1603,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
         interpolation,
         fit_frame_bounds,
         divisible_by,
-        enable_visualize=False,
-        crop_chunk_size=16,
+        crop_chunk_size=128,
         tracking_mode="mask",
         smoothing_method="gaussian",
         center_smooth_window=21,
@@ -1580,6 +1625,8 @@ class BatchImageCropByMaskAdvanced_StDismas:
         keep_face_models_loaded=False,
         fallback_detector="none",
         fallback_head_frac=0.5,
+        prompt=None,
+        unique_id=None,
     ):
         B, H, W, C = images.shape
 
@@ -1600,7 +1647,9 @@ class BatchImageCropByMaskAdvanced_StDismas:
 
         manual_params = {
             "aspect_ratio": aspect_ratio,
-            "output_long_side": output_long_side,
+            "use_custom_aspect_ratio": use_custom_aspect_ratio,
+            "custom_aspect_ratio": custom_aspect_ratio,
+            "output_resolution_side": output_resolution_side,
             "use_long_side": use_long_side,
             "use_custom_resolution": use_custom_resolution,
             "width": width,
@@ -1626,13 +1675,21 @@ class BatchImageCropByMaskAdvanced_StDismas:
 
         pipe_frames, pipe_params = _extract_crop_pipe_frames(pipe, B, W, H)
 
+        # Pipelines saved before the parameter rename remain usable.
+        if "output_resolution_side" not in pipe_params and "output_long_side" in pipe_params:
+            pipe_params["output_resolution_side"] = pipe_params["output_long_side"]
+
         if pipe is not None:
             for key in CROP_PIPE_OVERRIDABLE_KEYS:
                 if key in pipe_params:
                     manual_params[key] = pipe_params[key]
 
         aspect_ratio = manual_params["aspect_ratio"]
-        output_long_side = manual_params["output_long_side"]
+        use_custom_aspect_ratio = manual_params["use_custom_aspect_ratio"]
+        custom_aspect_ratio = manual_params["custom_aspect_ratio"]
+        # Older workflows/pipes may store widget values as strings. Keep the
+        # internal value numeric even when such a workflow is loaded.
+        output_resolution_side = int(round(float(manual_params["output_resolution_side"])))
         use_long_side = manual_params["use_long_side"]
         use_custom_resolution = manual_params["use_custom_resolution"]
         width = manual_params["width"]
@@ -1658,7 +1715,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
         ratio = (
             float(width) / max(1.0, float(height))
             if use_custom_resolution
-            else _parse_aspect_ratio(aspect_ratio)
+            else _parse_aspect_ratio(custom_aspect_ratio if use_custom_aspect_ratio else aspect_ratio)
         )
         face_report = {}
         inverse_affines = []
@@ -1772,7 +1829,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
                     crop_h = _snap_dimension_to_divisible(height, divisible_by)
                 else:
                     crop_w, crop_h = _compute_crop_size(
-                        output_long_side,
+                        output_resolution_side,
                         ratio,
                         use_long_side=use_long_side,
                         divisible_by=divisible_by,
@@ -1924,7 +1981,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
         if not has_extra_masks:
             out_masks = out_crop_masks
 
-        if enable_visualize:
+        if _is_output_connected(prompt, unique_id, 3):
             out_visualize = torch.empty_like(images)
             for i, (cx, cy, scale) in enumerate(centers_scales):
                 out_visualize[i] = _draw_crop_visualize(
@@ -1991,7 +2048,6 @@ class BatchImageCropByMaskAdvanced_StDismas:
         # These are included for completeness, but pipe consumer intentionally
         # does NOT override them from pipe.
         out_params["interpolation"] = interpolation
-        out_params["enable_visualize"] = enable_visualize
         out_params["crop_chunk_size"] = crop_chunk_size
 
         out_pipe = {
@@ -1999,6 +2055,23 @@ class BatchImageCropByMaskAdvanced_StDismas:
             "params": out_params,
             "crop_metadata": metadata,
         }
+        # Native BOUNDING_BOX payload: one box per frame, wrapped in a list to
+        # match MaskVidExperiments Subject Crop / Subject Uncrop batch format.
+        # It represents the final affine crop window, not the raw mask bbox.
+        bboxes = []
+        for cx, cy, scale in centers_scales:
+            source_w = float(crop_w) / max(float(scale), 1e-8)
+            source_h = float(crop_h) / max(float(scale), 1e-8)
+            x0 = int(round(float(cx) - source_w * 0.5))
+            y0 = int(round(float(cy) - source_h * 0.5))
+            x1 = int(round(float(cx) + source_w * 0.5))
+            y1 = int(round(float(cy) + source_h * 0.5))
+            bboxes.append([{
+                "x": x0,
+                "y": y0,
+                "width": max(1, x1 - x0),
+                "height": max(1, y1 - y0),
+            }])
 
         return (
             out_imgs,
@@ -2006,6 +2079,7 @@ class BatchImageCropByMaskAdvanced_StDismas:
             out_masks,
             out_visualize,
             metadata,
+            bboxes,
             out_pipe,
             report,
             int(crop_w),
@@ -2019,18 +2093,20 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         return {
             "required": {
                 "cropped_images": ("IMAGE", {"tooltip": "Cropped image batch to place back into original frame"}),
-                "crop_metadata": ("BBOXES", {"tooltip": "Metadata produced by the crop node"}),
                 "mode": (["overlay_by_mask", "overlay_full"], {"default": "overlay_by_mask", "tooltip": "Blend using a crop/square mask or overlay the full crop"}),
                 "blend": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Blend strength for uncrop result"}),
             },
             "optional": {
                 "base_images": ("IMAGE", {"tooltip": "Base image batch to composite onto"}),
                 "original_images": ("IMAGE", {"tooltip": "Legacy alias for base_images"}),
-                "crop_masks": ("MASK", {"tooltip": "Mask used when mode is overlay_by_mask and use_square_mask is disabled"}),
+                "crop_metadata": ("BBOXES", {"forceInput": True, "tooltip": "Precise affine metadata produced by the crop node; preferred over bboxes when both are connected"}),
+                "bboxes": ("BOUNDING_BOX", {"forceInput": True, "tooltip": "Per-frame [[{x, y, width, height}]] boxes; used when crop_metadata is not connected"}),
+                "crop_masks": ("MASK", {"tooltip": "Mask used when mode is overlay_by_mask and use_crop_canvas_mask is disabled"}),
+                "mask_expand_px": ("INT", {"default": 16, "min": 0, "max": 512, "step": 1, "tooltip": "Dilate crop_masks by this many crop-canvas pixels before feathering"}),
                 "border_blending": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Legacy feather control; used if feather_radius is 0"}),
-                "feather_radius": ("INT", {"default": 0, "min": 0, "max": 256, "step": 1, "tooltip": "Edge feathering radius in pixels"}),
+                "feather_radius": ("INT", {"default": 16, "min": 0, "max": 256, "step": 1, "tooltip": "Blur radius applied after mask expansion"}),
                 "crop_rescale": ("FLOAT", {"default": 1.0, "min": 0.25, "max": 4.0, "step": 0.01, "tooltip": "Scale cropped patch before placing in legacy bbox mode"}),
-                "use_square_mask": ("BOOLEAN", {"default": True, "tooltip": "Use rectangular patch compositing instead of crop mask alpha during uncrop"}),
+                "use_crop_canvas_mask": ("BOOLEAN", {"default": True, "tooltip": "Use a separate rectangular mask for the whole crop canvas instead of crop_masks"}),
                 "square_mask_inset_left_px": ("INT", {"default": 8, "min": 0, "max": 512, "step": 1, "tooltip": "Inset square composite mask from the left crop border"}),
                 "square_mask_inset_right_px": ("INT", {"default": 8, "min": 0, "max": 512, "step": 1, "tooltip": "Inset square composite mask from the right crop border"}),
                 "square_mask_inset_top_px": ("INT", {"default": 8, "min": 0, "max": 512, "step": 1, "tooltip": "Inset square composite mask from the top crop border"}),
@@ -2057,16 +2133,18 @@ class BatchImageUncropByMaskAdvanced_StDismas:
     def uncrop(
         self,
         cropped_images,
-        crop_metadata,
+        crop_metadata=None,
         mode="overlay_by_mask",
         blend=1.0,
         base_images=None,
         original_images=None,
+        bboxes=None,
         crop_masks=None,
+        mask_expand_px=16,
         border_blending=0.25,
-        feather_radius=0,
+        feather_radius=16,
         crop_rescale=1.0,
-        use_square_mask=True,
+        use_crop_canvas_mask=True,
         square_mask_inset_left_px=8,
         square_mask_inset_right_px=8,
         square_mask_inset_top_px=8,
@@ -2082,7 +2160,12 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         dropout_fade_window=9,
         uncrop_chunk_size=4,
         uncrop_memory_limit_mb=512,
+        use_square_mask=None,
     ):
+        # Python/API compatibility for callers that used the pre-rename keyword.
+        if use_square_mask is not None:
+            use_crop_canvas_mask = bool(use_square_mask)
+
         if base_images is None and original_images is not None:
             base_images = original_images
 
@@ -2106,6 +2189,10 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         feather_px = int(feather_radius)
         if feather_px <= 0:
             feather_px = int(round(float(border_blending) * 32.0))
+        expand_px = max(0, int(mask_expand_px))
+
+        if crop_metadata is None and bboxes is None:
+            raise ValueError("Connect either crop_metadata (precise affine) or bboxes (BOUNDING_BOX).")
 
         if isinstance(crop_metadata, dict) and crop_metadata.get("version") == "crop_by_mask_v2":
             frames = crop_metadata.get("frames", [])
@@ -2177,10 +2264,11 @@ class BatchImageUncropByMaskAdvanced_StDismas:
                     align_corners=False,
                 ).permute(0, 2, 3, 1)
 
-                if mode == "overlay_by_mask" and not use_square_mask:
+                if mode == "overlay_by_mask" and not use_crop_canvas_mask:
                     if crop_masks is None:
-                        raise ValueError("mode='overlay_by_mask' with use_square_mask=False requires crop_masks.")
+                        raise ValueError("mode='overlay_by_mask' with use_crop_canvas_mask=False requires crop_masks.")
                     alpha_patch = crop_masks[start:end].unsqueeze(1).float().to(device)
+                    alpha_patch = _dilate_mask(alpha_patch, expand_px)
                 else:
                     alpha_items = []
                     for frame in chunk_frames:
@@ -2233,7 +2321,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
                     padding_mode="zeros",
                     align_corners=False,
                 ).clamp(0.0, 1.0)
-                if mode == "overlay_by_mask" and not use_square_mask:
+                if mode == "overlay_by_mask" and not use_crop_canvas_mask:
                     alpha = _gaussian_blur_mask(alpha, feather_px)
                 alpha_nhwc = alpha.permute(0, 2, 3, 1)
 
@@ -2261,22 +2349,29 @@ class BatchImageUncropByMaskAdvanced_StDismas:
             return (out.to(device=device, dtype=dtype),)
 
         if base_images is None:
-            raise ValueError("Legacy crop_metadata requires base_images/original_images.")
+            raise ValueError("BBox uncrop requires base_images/original_images.")
+        if C != Cc:
+            raise ValueError(f"Channel mismatch: base_images={C}, cropped_images={Cc}")
 
-        if crop_masks is None:
-            raise ValueError("Legacy crop_metadata requires crop_masks.")
+        if mode == "overlay_by_mask" and not use_crop_canvas_mask and crop_masks is None:
+            raise ValueError("mode='overlay_by_mask' with use_crop_canvas_mask=False requires crop_masks.")
 
-        cropped_masks = _ensure_mask_hw(crop_masks, Hc, Wc)
+        cropped_masks = _ensure_mask_hw(crop_masks, Hc, Wc) if crop_masks is not None else None
 
-        if isinstance(crop_metadata, (list, tuple)):
-            if len(crop_metadata) == 1 and B > 1:
-                bboxes_use = [crop_metadata[0] for _ in range(B)]
-            elif len(crop_metadata) == B:
-                bboxes_use = list(crop_metadata)
+        bbox_source = crop_metadata if crop_metadata is not None else bboxes
+        if isinstance(bbox_source, (list, tuple)):
+            raw_boxes = list(bbox_source)
+            # Native BOUNDING_BOX uses one-item lists per frame.
+            if raw_boxes and all(isinstance(item, (list, tuple)) and len(item) == 1 for item in raw_boxes):
+                raw_boxes = [item[0] for item in raw_boxes]
+            if len(raw_boxes) == 1 and B > 1:
+                bboxes_use = [raw_boxes[0] for _ in range(B)]
+            elif len(raw_boxes) == B:
+                bboxes_use = raw_boxes
             else:
-                raise ValueError(f"legacy bboxes length must be 1 or B({B}), got {len(crop_metadata)}")
+                raise ValueError(f"bboxes length must be 1 or B({B}), got {len(raw_boxes)}")
         else:
-            bboxes_use = [crop_metadata for _ in range(B)]
+            bboxes_use = [bbox_source for _ in range(B)]
 
         device = base_images.device
         dtype = base_images.dtype
@@ -2285,7 +2380,15 @@ class BatchImageUncropByMaskAdvanced_StDismas:
         square_alpha_cache = {}
         for i in range(B):
             info = bboxes_use[i]
-            x0 = int(info["x0"]); y0 = int(info["y0"]); x1 = int(info["x1"]); y1 = int(info["y1"])
+            if not isinstance(info, dict):
+                raise ValueError(f"bbox frame {i} must be a dictionary, got {type(info).__name__}")
+            if all(key in info for key in ("x", "y", "width", "height")):
+                x0 = int(round(float(info["x"])))
+                y0 = int(round(float(info["y"])))
+                x1 = x0 + int(round(float(info["width"])))
+                y1 = y0 + int(round(float(info["height"])))
+            else:
+                x0 = int(info["x0"]); y0 = int(info["y0"]); x1 = int(info["x1"]); y1 = int(info["y1"])
             win_w = int(info.get("win_w", x1 - x0))
             win_h = int(info.get("win_h", y1 - y0))
 
@@ -2301,7 +2404,9 @@ class BatchImageUncropByMaskAdvanced_StDismas:
             tgt_h = max(1, int(round(win_h * float(crop_rescale))))
 
             patch = _resize_image(cropped_images[i], tgt_w, tgt_h)
-            if use_square_mask:
+            if mode == "overlay_full":
+                alpha = torch.ones((tgt_h, tgt_w), device=device, dtype=dtype)
+            elif use_crop_canvas_mask:
                 key = (
                     tgt_h,
                     tgt_w,
@@ -2332,7 +2437,10 @@ class BatchImageUncropByMaskAdvanced_StDismas:
                     )
                     square_alpha_cache[key] = alpha
             else:
-                alpha = _resize_mask(cropped_masks[i], tgt_w, tgt_h).to(device=device, dtype=dtype)
+                expanded_mask = _dilate_mask(
+                    cropped_masks[i].unsqueeze(0).unsqueeze(0), expand_px
+                ).squeeze(0).squeeze(0)
+                alpha = _resize_mask(expanded_mask, tgt_w, tgt_h).to(device=device, dtype=dtype)
                 alpha = _feather_alpha(alpha, feather_px)
 
             dst_x0, dst_y0 = x0, y0
@@ -2365,7 +2473,7 @@ class BatchImageUncropByMaskAdvanced_StDismas:
                 continue
 
             patch = patch[:ph, :pw, :]
-            alpha = alpha[:ph, :pw]
+            alpha = alpha[:ph, :pw] * float(blend)
 
             base = out[i, dst_y0:dst_y1, dst_x0:dst_x1, :]
             alpha3 = alpha.unsqueeze(-1).expand(-1, -1, Cc)

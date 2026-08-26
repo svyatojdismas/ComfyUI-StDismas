@@ -51,6 +51,7 @@ const LEGACY_WIDGET_ORDER = [
   "interpolation",
   "fit_frame_bounds",
   "divisible_by",
+  // Kept only to read workflows saved before preview became automatic.
   "enable_visualize",
   "crop_chunk_size",
   "tracking_mode",
@@ -70,6 +71,30 @@ const LEGACY_WIDGET_ORDER = [
   "keep_face_models_loaded",
   "fallback_detector",
   "fallback_head_frac",
+];
+
+const LEGACY_UNCROP_WIDGET_ORDER = [
+  "mode",
+  "blend",
+  "border_blending",
+  "feather_radius",
+  "crop_rescale",
+  "use_square_mask",
+  "square_mask_inset_left_px",
+  "square_mask_inset_right_px",
+  "square_mask_inset_top_px",
+  "square_mask_inset_bottom_px",
+  "square_mask_fade_left_px",
+  "square_mask_fade_right_px",
+  "square_mask_fade_top_px",
+  "square_mask_fade_bottom_px",
+  "square_mask_units",
+  "color_match_mode",
+  "color_match_strength",
+  "undetected_frames",
+  "dropout_fade_window",
+  "uncrop_chunk_size",
+  "uncrop_memory_limit_mb",
 ];
 
 function findWidget(node, name) {
@@ -129,6 +154,12 @@ function refreshCropWidgets(node) {
   const faceMode = trackingMode === "face_detection";
   const identityEnabled = Boolean(findWidget(node, "identity_track")?.value);
   const fallbackEnabled = (findWidget(node, "fallback_detector")?.value ?? "none") !== "none";
+  const customResolution = Boolean(findWidget(node, "use_custom_resolution")?.value);
+  const customAspectRatio = Boolean(findWidget(node, "use_custom_aspect_ratio")?.value);
+
+  setWidgetVisible(findWidget(node, "width"), customResolution);
+  setWidgetVisible(findWidget(node, "height"), customResolution);
+  setWidgetVisible(findWidget(node, "custom_aspect_ratio"), customAspectRatio);
 
   for (const name of FACE_WIDGETS) {
     let visible = faceMode;
@@ -176,6 +207,8 @@ function setupCropNode(node) {
     "smoothing_method",
     "smooth_center",
     "smooth_zoom",
+    "use_custom_resolution",
+    "use_custom_aspect_ratio",
     "identity_track",
     "fallback_detector",
   ]) {
@@ -185,7 +218,7 @@ function setupCropNode(node) {
 }
 
 function refreshUncropWidgets(node) {
-  const squareMaskEnabled = Boolean(findWidget(node, "use_square_mask")?.value);
+  const squareMaskEnabled = Boolean(findWidget(node, "use_crop_canvas_mask")?.value);
   for (const name of SQUARE_MASK_WIDGETS) {
     setWidgetVisible(findWidget(node, name), squareMaskEnabled);
   }
@@ -197,7 +230,7 @@ function setupUncropNode(node) {
   node.__stdismasDynamicUncrop = true;
 
   const refresh = () => refreshUncropWidgets(node);
-  hookWidget(node, "use_square_mask", refresh);
+  hookWidget(node, "use_crop_canvas_mask", refresh);
   refresh();
 }
 
@@ -217,6 +250,64 @@ function installNamedWidgetState(nodeType) {
           LEGACY_WIDGET_ORDER.slice(0, saved.length).map((name, index) => [name, saved[index]]),
         )
       : saved;
+
+    // Workflows saved before this rename retain their output-side value.
+    if (
+      valuesByName.output_resolution_side === undefined &&
+      valuesByName.output_long_side !== undefined
+    ) {
+      valuesByName.output_resolution_side = valuesByName.output_long_side;
+    }
+    if (valuesByName.output_resolution_side !== undefined) {
+      const numericValue = Number(valuesByName.output_resolution_side);
+      if (Number.isFinite(numericValue)) {
+        valuesByName.output_resolution_side = Math.round(numericValue);
+      }
+    }
+
+    for (const widget of this.widgets) {
+      if (Object.prototype.hasOwnProperty.call(valuesByName, widget.name)) {
+        widget.value = valuesByName[widget.name];
+        widget.callback?.(widget.value);
+      }
+    }
+    return result;
+  };
+
+  const originalSerialize = prototype.onSerialize;
+  prototype.onSerialize = function (info) {
+    const result = originalSerialize?.apply(this, arguments);
+    info.widgets_values = Object.fromEntries(
+      (this.widgets ?? [])
+        .filter((widget) => widget.type !== "button")
+        .map((widget) => [widget.name, widget.value]),
+    );
+    return result;
+  };
+}
+
+function installUncropNamedWidgetState(nodeType) {
+  const prototype = nodeType.prototype;
+  if (prototype.__stdismasNamedUncropWidgetState) return;
+  prototype.__stdismasNamedUncropWidgetState = true;
+
+  const originalConfigure = prototype.onConfigure;
+  prototype.onConfigure = function (info) {
+    const result = originalConfigure?.apply(this, arguments);
+    const saved = info?.widgets_values;
+    if (!saved || !this.widgets) return result;
+
+    const valuesByName = Array.isArray(saved)
+      ? Object.fromEntries(
+          LEGACY_UNCROP_WIDGET_ORDER.slice(0, saved.length).map((name, index) => [name, saved[index]]),
+        )
+      : saved;
+    if (
+      valuesByName.use_crop_canvas_mask === undefined &&
+      valuesByName.use_square_mask !== undefined
+    ) {
+      valuesByName.use_crop_canvas_mask = valuesByName.use_square_mask;
+    }
 
     for (const widget of this.widgets) {
       if (Object.prototype.hasOwnProperty.call(valuesByName, widget.name)) {
@@ -246,11 +337,22 @@ app.registerExtension({
       if (node.type === LEGACY_FACE_CROP_CLASS) {
         node.type = UNIVERSAL_CROP_CLASS;
       }
+      if (
+        UNCROP_NODE_CLASSES.has(node.type) &&
+        node.widgets_values &&
+        !Array.isArray(node.widgets_values) &&
+        node.widgets_values.use_crop_canvas_mask === undefined &&
+        node.widgets_values.use_square_mask !== undefined
+      ) {
+        node.widgets_values.use_crop_canvas_mask = node.widgets_values.use_square_mask;
+      }
     }
   },
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (CROP_NODE_CLASSES.has(nodeData?.name)) {
       installNamedWidgetState(nodeType);
+    } else if (UNCROP_NODE_CLASSES.has(nodeData?.name)) {
+      installUncropNamedWidgetState(nodeType);
     }
   },
   nodeCreated(node) {

@@ -172,6 +172,14 @@ crop_mask → cropped_masks
 
 Служебные данные для последующего `Uncrop`.
 
+### `bboxes`
+
+Тип: `BOUNDING_BOX`
+
+Совместимый с нативными bbox-входами ComfyUI выход: для каждого кадра возвращает `[{"x", "y", "width", "height"}]`. Он описывает итоговое окно crop после smoothing, offset и `fit_frame_bounds`, поэтому его можно подключить, например, к `MaskVidExperiments Subject Uncrop`.
+
+Для точного сшивания с этой нодой используйте всё же `crop_metadata`: affine crop допускает дробные координаты, которые формат bbox округляет до пикселей.
+
 В metadata сохраняется информация о каждом кадре:
 
 - исходный размер;
@@ -235,6 +243,8 @@ crop_mask → cropped_masks
 5:4
 2:3
 3:2
+21:9
+9:21
 ```
 
 Работает, если `use_custom_resolution = false`.
@@ -246,13 +256,15 @@ crop_mask → cropped_masks
 - `1:1` — квадратный crop;
 - `4:3` — классический кадр.
 
+Чтобы задать любое другое соотношение, включите `use_custom_aspect_ratio` и укажите `custom_aspect_ratio` в формате `W:H`, например `2.39:1`.
+
 ---
 
-## `output_long_side`
+## `output_resolution_side`
 
 Базовый размер crop.
 
-Название историческое: в зависимости от `use_long_side` этот параметр может управлять либо длинной, либо короткой стороной.
+В зависимости от `use_long_side` этот параметр управляет либо длинной, либо короткой стороной.
 
 ---
 
@@ -260,17 +272,17 @@ crop_mask → cropped_masks
 
 Boolean.
 
-Определяет, как интерпретировать `output_long_side`.
+Определяет, как интерпретировать `output_resolution_side`.
 
 ### Если `true`
 
-`output_long_side` задает длинную сторону crop.
+`output_resolution_side` задает длинную сторону crop.
 
 Пример:
 
 ```text
 aspect_ratio = 16:9
-output_long_side = 1024
+output_resolution_side = 1024
 ```
 
 Результат примерно:
@@ -281,13 +293,13 @@ output_long_side = 1024
 
 ### Если `false`
 
-`output_long_side` задает короткую сторону crop.
+`output_resolution_side` задает короткую сторону crop.
 
 Пример:
 
 ```text
 aspect_ratio = 16:9
-output_long_side = 576
+output_resolution_side = 576
 ```
 
 Результат примерно:
@@ -311,13 +323,13 @@ Boolean.
 Размер crop считается автоматически через:
 
 - `aspect_ratio`;
-- `output_long_side`;
+- `output_resolution_side`;
 - `use_long_side`;
 - `divisible_by`.
 
 ### Если `true`
 
-Нода игнорирует `aspect_ratio`, `output_long_side` и `use_long_side`, а использует значения:
+Нода игнорирует `aspect_ratio`, `output_resolution_side` и `use_long_side`, а использует значения:
 
 - `width`;
 - `height`.
@@ -664,7 +676,7 @@ zoom_smoothing_strength = 0.0–0.15
 
 ## Назначение
 
-**Batch Image Uncrop By Mask Advanced** вставляет cropped-изображения обратно в исходное изображение/видео, используя `crop_metadata`, полученную из Crop-ноды.
+**Batch Image Uncrop By Mask Advanced** вставляет cropped-изображения обратно в исходное изображение/видео. Для позиционирования можно использовать точную `crop_metadata` или совместимый вход `bboxes`.
 
 Нода нужна после обработки cropped-кадров, например:
 
@@ -694,7 +706,18 @@ Uncrop использует affine metadata, чтобы вернуть crop об
 
 Metadata из Crop-ноды.
 
-Без этого входа Uncrop не знает:
+Это предпочтительный вход: он хранит дробный affine transform и позволяет наиболее точно обратить Crop.
+
+---
+
+### `bboxes`
+
+Тип: `BOUNDING_BOX`
+Опциональный вход.
+
+Принимает формат `[[{"x", "y", "width", "height"}], ...]`, который экспортирует Crop-нода. Используется, если `crop_metadata` не подключена. В этом режиме обязательно нужны `base_images`; crop масштабируется и вставляется в прямоугольник bbox. При одновременном подключении обоих входов приоритет имеет более точная `crop_metadata`.
+
+Без `crop_metadata` или `bboxes` Uncrop не знает:
 
 - куда возвращать crop;
 - какого размера был исходный кадр;
@@ -737,9 +760,11 @@ Legacy alias для `base_images`.
 
 - `cropped_masks` из Crop-ноды;
 - любая другая маска в crop-пространстве;
-- маска после обработки/расширения/размытия.
+- маска после дополнительной обработки.
 
 Если используется mask-based overlay, эта маска определяет, какие части cropped image будут вставлены в base image.
+
+Перед feather нода сама расширяет эту маску через dilation на `mask_expand_px`.
 
 ---
 
@@ -786,11 +811,11 @@ Alpha-mask не используется.
 
 Вставляет crop через alpha-mask.
 
-Поведение зависит от `use_square_mask`.
+Поведение зависит от `use_crop_canvas_mask`.
 
-Если `use_square_mask = false`, используется `crop_masks`.
+Если `use_crop_canvas_mask = false`, используется `crop_masks`: сначала dilation, затем feather.
 
-Если `use_square_mask = true`, используется прямоугольная alpha-mask с настраиваемыми inset/fade по сторонам.
+Если `use_crop_canvas_mask = true`, используется отдельная прямоугольная alpha-mask всего crop с настраиваемыми inset/fade по сторонам.
 
 ---
 
@@ -836,7 +861,9 @@ Legacy-параметр сглаживания края.
 
 ## `feather_radius`
 
-Радиус смягчения маски в пикселях для режима, когда `use_square_mask = false`.
+Радиус смягчения уже расширенной маски для режима, когда `use_crop_canvas_mask = false`.
+
+Значение по умолчанию: `16`.
 
 То есть влияет на обычный mask-based uncrop через `crop_masks`.
 
@@ -862,6 +889,16 @@ feather_radius = 16–32
 
 ---
 
+## `mask_expand_px`
+
+Радиус dilation для `crop_masks` в пикселях crop canvas. Выполняется до `feather_radius`, поэтому это не то же самое, что размытие: dilation увеличивает непрозрачную область, а feather смягчает новый край.
+
+Значение по умолчанию: `16`.
+
+Не применяется при `use_crop_canvas_mask = true` и в режиме `overlay_full`.
+
+---
+
 ## `crop_rescale`
 
 Legacy-параметр.
@@ -872,7 +909,7 @@ Legacy-параметр.
 
 ---
 
-## `use_square_mask`
+## `use_crop_canvas_mask`
 
 Boolean.
 
@@ -1053,7 +1090,7 @@ fade = насколько мягкий этот край
 
 ```text
 mode = overlay_by_mask
-use_square_mask = true
+use_crop_canvas_mask = true
 blend = 1.0
 ```
 
@@ -1125,7 +1162,7 @@ square_mask_fade_top_px = 0
 
 ```text
 mode = overlay_by_mask
-use_square_mask = false
+use_crop_canvas_mask = false
 crop_masks = cropped_masks
 feather_radius = 8–24
 ```
@@ -1278,7 +1315,7 @@ divisible_by = 8 / 16 / 32 / 64
 
 ```text
 mode = overlay_by_mask
-use_square_mask = true
+use_crop_canvas_mask = true
 ```
 
 И настроить inset/fade.
@@ -1300,14 +1337,14 @@ square_mask_fade_*_px
 
 ## Uncrop по маске не совпадает с новым объектом
 
-Если `use_square_mask = false`, нода использует `crop_masks`.
+Если `use_crop_canvas_mask = false`, нода использует `crop_masks`.
 
 Если processed crop сильно изменил форму объекта, старая маска может уже не совпадать.
 
 Решение:
 
 ```text
-use_square_mask = true
+use_crop_canvas_mask = true
 ```
 
 или использовать более подходящую crop-space mask.
@@ -1322,7 +1359,7 @@ use_square_mask = true
 crop_mask              — маска, по которой считается crop
 masks                  — дополнительная маска, просто кропается вместе с image
 aspect_ratio           — соотношение сторон crop
-output_long_side       — базовый размер стороны
+output_resolution_side — базовый размер стороны
 use_long_side          — true: long side, false: short side
 use_custom_resolution  — использовать width/height вручную
 width / height         — custom crop size
@@ -1350,7 +1387,7 @@ crop_masks                     — маска для overlay_by_mask
 mode                           — full overlay или overlay по маске
 blend                          — сила смешивания
 feather_radius                 — размытие обычной crop mask
-use_square_mask                — использовать прямоугольную alpha mask
+use_crop_canvas_mask           — использовать прямоугольную alpha mask всего crop
 square_mask_inset_*            — отступ активной области от каждой стороны
 square_mask_fade_*             — мягкость края каждой стороны
 ```

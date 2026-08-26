@@ -20,7 +20,9 @@ _UNSET = object()
 def run_crop(images, crop_mask=_UNSET, **overrides):
     options = dict(
         aspect_ratio="1:1",
-        output_long_side=32,
+        use_custom_aspect_ratio=False,
+        custom_aspect_ratio="1:1",
+        output_resolution_side=32,
         use_long_side=True,
         use_custom_resolution=True,
         width=32,
@@ -37,7 +39,6 @@ def run_crop(images, crop_mask=_UNSET, **overrides):
         interpolation="bilinear",
         fit_frame_bounds=False,
         divisible_by=1,
-        enable_visualize=False,
         crop_chunk_size=2,
         tracking_mode="mask",
         smoothing_method="none",
@@ -74,8 +75,20 @@ class CropUncropTests(unittest.TestCase):
         input_types = MODULE.BatchImageCropByMaskAdvanced_StDismas.INPUT_TYPES()
         widget_names = [name for name in input_types["required"] if name != "images"]
         self.assertEqual(widget_names[0], "tracking_mode")
+        self.assertNotIn("enable_visualize", widget_names)
         self.assertNotIn("crop_mask", input_types["required"])
         self.assertIn("crop_mask", input_types["optional"])
+
+    def test_visualize_is_rendered_only_when_its_output_is_connected(self):
+        not_connected = run_crop(self.images, self.masks)
+        self.assertIs(not_connected[3], self.images)
+
+        prompt = {
+            "9": {"inputs": {"images": ["42", 3]}},
+        }
+        connected = run_crop(self.images, self.masks, prompt=prompt, unique_id="42")
+        self.assertIsNot(connected[3], self.images)
+        self.assertGreater(float(connected[3].max()), 0.0)
 
     def test_only_one_universal_crop_node_is_registered(self):
         self.assertIn("BatchImageCropByMaskAdvanced_StDismas", MODULE.NODE_CLASS_MAPPINGS)
@@ -86,6 +99,37 @@ class CropUncropTests(unittest.TestCase):
         choices, options = input_types["required"]["mode"]
         self.assertEqual(choices[0], "overlay_by_mask")
         self.assertEqual(options["default"], "overlay_by_mask")
+
+    def test_uncrop_mask_controls_and_bbox_input(self):
+        input_types = MODULE.BatchImageUncropByMaskAdvanced_StDismas.INPUT_TYPES()
+        optional = input_types["optional"]
+        self.assertIn("bboxes", optional)
+        self.assertEqual(optional["bboxes"][0], "BOUNDING_BOX")
+        self.assertNotIn("use_square_mask", optional)
+        self.assertTrue(optional["use_crop_canvas_mask"][1]["default"])
+        self.assertEqual(optional["mask_expand_px"][1]["default"], 16)
+        self.assertEqual(optional["feather_radius"][1]["default"], 16)
+
+    def test_mask_dilation_expands_before_feather(self):
+        mask = torch.zeros((1, 1, 9, 9), dtype=torch.float32)
+        mask[:, :, 4, 4] = 1.0
+        expanded = MODULE._dilate_mask(mask, 2)
+        self.assertEqual(float(expanded.sum()), 25.0)
+        self.assertEqual(float(expanded[0, 0, 2, 2]), 1.0)
+        self.assertEqual(float(expanded[0, 0, 1, 1]), 0.0)
+
+    def test_uncrop_accepts_native_bounding_box_without_metadata(self):
+        base = torch.zeros((1, 12, 12, 3), dtype=torch.float32)
+        crop = torch.ones((1, 4, 4, 3), dtype=torch.float32)
+        result = MODULE.BatchImageUncropByMaskAdvanced_StDismas().uncrop(
+            cropped_images=crop,
+            bboxes=[[{"x": 3, "y": 2, "width": 4, "height": 4}]],
+            mode="overlay_full",
+            blend=1.0,
+            base_images=base,
+        )[0]
+        self.assertEqual(float(result[:, 2:6, 3:7].sum()), 48.0)
+        self.assertEqual(float(result.sum()), 48.0)
 
     def test_legacy_strength_controls_every_smoothing_method(self):
         values = MODULE.np.asarray([10.0, 20.0, 5.0, 30.0, 15.0])
@@ -126,8 +170,8 @@ class CropUncropTests(unittest.TestCase):
             auto_resolution_cap=128,
             divisible_by=32,
         )
-        self.assertLessEqual(max(result[7], result[8]), 128)
-        self.assertIn("magnification", result[6])
+        self.assertLessEqual(max(result[8], result[9]), 128)
+        self.assertIn("magnification", result[7])
         self.assertIn("magnification", result[4])
 
     def test_uncrop_skip_uses_tracking_validity(self):
@@ -174,7 +218,7 @@ class CropUncropTests(unittest.TestCase):
             )
         self.assertEqual(result[4]["tracking_mode"], "face_detection")
         self.assertGreater(float(result[1].sum()), 0.0)
-        self.assertIn("face tracking", result[6])
+        self.assertIn("face tracking", result[7])
 
     def test_face_mode_can_omit_crop_mask_input_entirely(self):
         prediction = ([[10.0, 12.0, 22.0, 28.0]], [0.9], [0])
@@ -226,7 +270,7 @@ class CropUncropTests(unittest.TestCase):
                 identity_threshold=0.28,
             )
         self.assertAlmostEqual(result[4]["frames"][0]["center"][0], 46.0)
-        self.assertIn("identity=1", result[6])
+        self.assertIn("identity=1", result[7])
 
     def test_fp16_inputs_keep_fp32_geometry_but_return_original_dtype(self):
         result = run_crop(self.images.half(), self.masks.half())
