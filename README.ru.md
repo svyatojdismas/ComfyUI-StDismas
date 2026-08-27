@@ -25,7 +25,7 @@
 
 Интеграция необязательна. Если VideoHelperSuite отсутствует или несовместим, остальные ноды StDismas продолжают загружаться обычным образом.
 
-## Установвка
+## Установка
 Клонировать репозиторий в ComfyUI/custom_nodes/ и перезапустить ComfyUI:
 ```
 git clone https://github.com/svyatojdismas/ComfyUI-StDismas.git
