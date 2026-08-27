@@ -26,3 +26,9 @@ is installed, StDismas adds:
 
 The integration is optional. If VideoHelperSuite is absent or incompatible, the
 rest of the StDismas node pack continues to load normally.
+
+## Installation
+
+```
+git clone https://github.com/svyatojdismas/ComfyUI-StDismas.git
+```
