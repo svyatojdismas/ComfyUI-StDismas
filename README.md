@@ -2,9 +2,7 @@
 
 Custom nodes for ComfyUI focused on stable batch/video cropping, mask-based compositing, optional face tracking, and practical video loading helpers.
 
-<p align="center">
-[English](README.md) | [Russian](README.ru.md)
-</p>
+<p align="center"><a href="README.md">English</a> | <a href="README.ru.md">Russian</a></p>
 
 ## Documentation
 

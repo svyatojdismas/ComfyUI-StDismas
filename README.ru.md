@@ -2,7 +2,7 @@
 
 Пакет нод для ComfyUI с покадровым кадрированием изображений и видео, mask-based compositing, optional face tracking и вспомогательными VHS-инструментами.
 
-[English](README.md) | [Russian](README.ru.md)
+<p align="center"><a href="README.md">English</a> | <a href="README.ru.md">Russian</a></p>
 
 ## Документация
 
