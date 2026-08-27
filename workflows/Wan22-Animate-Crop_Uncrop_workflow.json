@@ -1,7 +1,7 @@
 {
   "id": "89bccf9f-ccb0-4b96-b699-dba80d9b875a",
   "revision": 0,
-  "last_node_id": 2877,
+  "last_node_id": 2880,
   "last_link_id": 5191,
   "nodes": [
     {
@@ -108,7 +108,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 98,
+      "order": 100,
       "mode": 0,
       "inputs": [
         {
@@ -202,7 +202,7 @@
         100
       ],
       "flags": {},
-      "order": 119,
+      "order": 121,
       "mode": 4,
       "inputs": [
         {
@@ -331,7 +331,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 102,
+      "order": 104,
       "mode": 0,
       "inputs": [
         {
@@ -424,7 +424,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 85,
+      "order": 87,
       "mode": 4,
       "inputs": [
         {
@@ -619,7 +619,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 83,
+      "order": 85,
       "mode": 4,
       "inputs": [
         {
@@ -715,7 +715,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 212,
+      "order": 214,
       "mode": 4,
       "inputs": [
         {
@@ -810,7 +810,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 90,
+      "order": 92,
       "mode": 4,
       "inputs": [
         {
@@ -860,7 +860,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 194,
+      "order": 196,
       "mode": 0,
       "inputs": [
         {
@@ -1045,7 +1045,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 120,
+      "order": 122,
       "mode": 0,
       "inputs": [
         {
@@ -1141,7 +1141,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 143,
+      "order": 145,
       "mode": 0,
       "inputs": [
         {
@@ -1197,7 +1197,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 84,
+      "order": 86,
       "mode": 0,
       "inputs": [
         {
@@ -1316,7 +1316,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 118,
+      "order": 120,
       "mode": 0,
       "inputs": [
         {
@@ -1378,7 +1378,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 132,
+      "order": 134,
       "mode": 0,
       "inputs": [
         {
@@ -1441,7 +1441,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 131,
+      "order": 133,
       "mode": 0,
       "inputs": [
         {
@@ -1500,7 +1500,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 139,
+      "order": 141,
       "mode": 0,
       "inputs": [
         {
@@ -1541,7 +1541,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 140,
+      "order": 142,
       "mode": 0,
       "inputs": [
         {
@@ -1635,7 +1635,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 198,
+      "order": 200,
       "mode": 0,
       "inputs": [
         {
@@ -1699,7 +1699,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 95,
+      "order": 97,
       "mode": 0,
       "inputs": [
         {
@@ -1747,7 +1747,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 110,
+      "order": 112,
       "mode": 0,
       "inputs": [
         {
@@ -1795,7 +1795,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 122,
+      "order": 124,
       "mode": 4,
       "inputs": [
         {
@@ -1981,7 +1981,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 176,
+      "order": 178,
       "mode": 0,
       "inputs": [
         {
@@ -2025,7 +2025,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 91,
+      "order": 93,
       "mode": 0,
       "inputs": [
         {
@@ -2075,7 +2075,7 @@
         210
       ],
       "flags": {},
-      "order": 141,
+      "order": 143,
       "mode": 0,
       "inputs": [
         {
@@ -2166,7 +2166,7 @@
         30
       ],
       "flags": {},
-      "order": 175,
+      "order": 177,
       "mode": 0,
       "inputs": [
         {
@@ -2209,7 +2209,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 163,
+      "order": 165,
       "mode": 4,
       "inputs": [
         {
@@ -2272,7 +2272,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 209,
+      "order": 211,
       "mode": 4,
       "inputs": [
         {
@@ -2416,7 +2416,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 101,
+      "order": 103,
       "mode": 0,
       "inputs": [
         {
@@ -2698,7 +2698,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 104,
+      "order": 106,
       "mode": 0,
       "inputs": [
         {
@@ -2789,7 +2789,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 170,
+      "order": 172,
       "mode": 0,
       "inputs": [
         {
@@ -2832,7 +2832,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 165,
+      "order": 167,
       "mode": 0,
       "inputs": [
         {
@@ -2930,7 +2930,7 @@
         250
       ],
       "flags": {},
-      "order": 220,
+      "order": 222,
       "mode": 4,
       "inputs": [
         {
@@ -2971,7 +2971,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 128,
+      "order": 129,
       "mode": 0,
       "inputs": [
         {
@@ -3021,7 +3021,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 129,
+      "order": 130,
       "mode": 0,
       "inputs": [
         {
@@ -3174,7 +3174,7 @@
         50
       ],
       "flags": {},
-      "order": 173,
+      "order": 175,
       "mode": 0,
       "inputs": [
         {
@@ -3223,7 +3223,7 @@
         60
       ],
       "flags": {},
-      "order": 213,
+      "order": 215,
       "mode": 4,
       "inputs": [
         {
@@ -3321,7 +3321,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 126,
+      "order": 132,
       "mode": 0,
       "inputs": [
         {
@@ -3417,7 +3417,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 215,
+      "order": 217,
       "mode": 4,
       "inputs": [
         {
@@ -3564,7 +3564,7 @@
         60
       ],
       "flags": {},
-      "order": 167,
+      "order": 169,
       "mode": 0,
       "inputs": [
         {
@@ -3618,7 +3618,7 @@
         170
       ],
       "flags": {},
-      "order": 157,
+      "order": 159,
       "mode": 0,
       "inputs": [
         {
@@ -3783,7 +3783,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 103,
+      "order": 105,
       "mode": 0,
       "inputs": [
         {
@@ -3831,7 +3831,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 226,
+      "order": 228,
       "mode": 0,
       "inputs": [
         {
@@ -3886,7 +3886,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 227,
+      "order": 229,
       "mode": 0,
       "inputs": [
         {
@@ -3941,7 +3941,7 @@
         334
       ],
       "flags": {},
-      "order": 188,
+      "order": 190,
       "mode": 0,
       "inputs": [
         {
@@ -4149,7 +4149,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 151,
+      "order": 153,
       "mode": 0,
       "inputs": [
         {
@@ -4197,7 +4197,7 @@
         170
       ],
       "flags": {},
-      "order": 202,
+      "order": 204,
       "mode": 0,
       "inputs": [
         {
@@ -4258,7 +4258,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 124,
+      "order": 126,
       "mode": 4,
       "inputs": [
         {
@@ -4345,7 +4345,7 @@
         90
       ],
       "flags": {},
-      "order": 94,
+      "order": 96,
       "mode": 4,
       "inputs": [
         {
@@ -4393,7 +4393,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 134,
+      "order": 136,
       "mode": 4,
       "inputs": [
         {
@@ -4439,7 +4439,7 @@
         90
       ],
       "flags": {},
-      "order": 92,
+      "order": 94,
       "mode": 4,
       "inputs": [
         {
@@ -4485,7 +4485,7 @@
         250
       ],
       "flags": {},
-      "order": 159,
+      "order": 161,
       "mode": 4,
       "inputs": [
         {
@@ -4563,7 +4563,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 107,
+      "order": 109,
       "mode": 4,
       "inputs": [
         {
@@ -4628,7 +4628,7 @@
         90
       ],
       "flags": {},
-      "order": 96,
+      "order": 98,
       "mode": 4,
       "inputs": [
         {
@@ -4717,7 +4717,7 @@
         26
       ],
       "flags": {},
-      "order": 192,
+      "order": 194,
       "mode": 0,
       "inputs": [
         {
@@ -4805,7 +4805,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 154,
+      "order": 156,
       "mode": 0,
       "inputs": [
         {
@@ -4853,7 +4853,7 @@
         90
       ],
       "flags": {},
-      "order": 136,
+      "order": 138,
       "mode": 4,
       "inputs": [
         {
@@ -4901,7 +4901,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 195,
+      "order": 197,
       "mode": 0,
       "inputs": [
         {
@@ -4951,7 +4951,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 234,
+      "order": 236,
       "mode": 0,
       "inputs": [
         {
@@ -5001,7 +5001,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 184,
+      "order": 186,
       "mode": 0,
       "inputs": [
         {
@@ -5051,7 +5051,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 233,
+      "order": 235,
       "mode": 0,
       "inputs": [
         {
@@ -5190,7 +5190,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 150,
+      "order": 152,
       "mode": 0,
       "inputs": [
         {
@@ -5238,7 +5238,7 @@
         50
       ],
       "flags": {},
-      "order": 144,
+      "order": 146,
       "mode": 4,
       "inputs": [
         {
@@ -5281,7 +5281,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 147,
+      "order": 149,
       "mode": 0,
       "inputs": [
         {
@@ -5356,7 +5356,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 164,
+      "order": 166,
       "mode": 0,
       "inputs": [
         {
@@ -5406,7 +5406,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 149,
+      "order": 151,
       "mode": 0,
       "inputs": [
         {
@@ -5502,7 +5502,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 86,
+      "order": 88,
       "mode": 0,
       "inputs": [
         {
@@ -5621,7 +5621,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 155,
+      "order": 157,
       "mode": 0,
       "inputs": [
         {
@@ -5765,7 +5765,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 156,
+      "order": 158,
       "mode": 0,
       "inputs": [
         {
@@ -5817,7 +5817,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 153,
+      "order": 155,
       "mode": 0,
       "inputs": [
         {
@@ -5867,7 +5867,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 100,
+      "order": 102,
       "mode": 0,
       "inputs": [
         {
@@ -5929,7 +5929,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 152,
+      "order": 154,
       "mode": 0,
       "inputs": [
         {
@@ -5978,7 +5978,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 166,
+      "order": 168,
       "mode": 0,
       "inputs": [
         {
@@ -6031,7 +6031,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 200,
+      "order": 202,
       "mode": 4,
       "inputs": [
         {
@@ -6091,7 +6091,7 @@
         26
       ],
       "flags": {},
-      "order": 185,
+      "order": 187,
       "mode": 0,
       "inputs": [
         {
@@ -6131,7 +6131,7 @@
         26
       ],
       "flags": {},
-      "order": 186,
+      "order": 188,
       "mode": 0,
       "inputs": [
         {
@@ -6171,7 +6171,7 @@
         26
       ],
       "flags": {},
-      "order": 191,
+      "order": 193,
       "mode": 0,
       "inputs": [
         {
@@ -6255,7 +6255,7 @@
         60
       ],
       "flags": {},
-      "order": 168,
+      "order": 170,
       "mode": 0,
       "inputs": [
         {
@@ -6313,7 +6313,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 183,
+      "order": 185,
       "mode": 0,
       "inputs": [
         {
@@ -6363,7 +6363,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 115,
+      "order": 118,
       "mode": 0,
       "inputs": [
         {
@@ -6411,7 +6411,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 116,
+      "order": 115,
       "mode": 0,
       "inputs": [
         {
@@ -6459,7 +6459,7 @@
         250
       ],
       "flags": {},
-      "order": 181,
+      "order": 183,
       "mode": 0,
       "inputs": [
         {
@@ -6538,7 +6538,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 193,
+      "order": 195,
       "mode": 0,
       "inputs": [
         {
@@ -6709,7 +6709,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 106,
+      "order": 108,
       "mode": 0,
       "inputs": [
         {
@@ -6776,7 +6776,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 207,
+      "order": 209,
       "mode": 0,
       "inputs": [
         {
@@ -6847,7 +6847,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 206,
+      "order": 208,
       "mode": 0,
       "inputs": [
         {
@@ -6925,7 +6925,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 216,
+      "order": 218,
       "mode": 0,
       "inputs": [
         {
@@ -7063,7 +7063,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 114,
+      "order": 117,
       "mode": 4,
       "inputs": [
         {
@@ -7167,7 +7167,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 130,
+      "order": 131,
       "mode": 0,
       "inputs": [
         {
@@ -7246,7 +7246,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 208,
+      "order": 210,
       "mode": 0,
       "inputs": [
         {
@@ -7533,7 +7533,7 @@
         334
       ],
       "flags": {},
-      "order": 161,
+      "order": 163,
       "mode": 4,
       "inputs": [
         {
@@ -7648,7 +7648,7 @@
         90
       ],
       "flags": {},
-      "order": 160,
+      "order": 162,
       "mode": 4,
       "inputs": [
         {
@@ -7695,7 +7695,7 @@
         420
       ],
       "flags": {},
-      "order": 121,
+      "order": 123,
       "mode": 4,
       "inputs": [
         {
@@ -7794,7 +7794,7 @@
         453.5
       ],
       "flags": {},
-      "order": 97,
+      "order": 99,
       "mode": 4,
       "inputs": [
         {
@@ -7927,7 +7927,7 @@
         420
       ],
       "flags": {},
-      "order": 123,
+      "order": 125,
       "mode": 4,
       "inputs": [
         {
@@ -8028,7 +8028,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 135,
+      "order": 137,
       "mode": 4,
       "inputs": [
         {
@@ -8176,7 +8176,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 133,
+      "order": 135,
       "mode": 4,
       "inputs": [
         {
@@ -8271,7 +8271,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 148,
+      "order": 150,
       "mode": 0,
       "inputs": [
         {
@@ -8319,7 +8319,7 @@
         334
       ],
       "flags": {},
-      "order": 162,
+      "order": 164,
       "mode": 4,
       "inputs": [
         {
@@ -8437,7 +8437,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 137,
+      "order": 139,
       "mode": 0,
       "inputs": [
         {
@@ -8539,7 +8539,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 125,
+      "order": 127,
       "mode": 0,
       "inputs": [
         {
@@ -8588,7 +8588,7 @@
         60
       ],
       "flags": {},
-      "order": 99,
+      "order": 101,
       "mode": 4,
       "inputs": [
         {
@@ -8766,7 +8766,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 111,
+      "order": 119,
       "mode": 0,
       "inputs": [
         {
@@ -8833,7 +8833,7 @@
         60
       ],
       "flags": {},
-      "order": 89,
+      "order": 91,
       "mode": 4,
       "inputs": [
         {
@@ -8882,7 +8882,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 146,
+      "order": 148,
       "mode": 0,
       "inputs": [
         {
@@ -8939,7 +8939,7 @@
         90
       ],
       "flags": {},
-      "order": 196,
+      "order": 198,
       "mode": 0,
       "inputs": [
         {
@@ -9002,7 +9002,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 236,
+      "order": 238,
       "mode": 0,
       "inputs": [
         {
@@ -9030,7 +9030,6 @@
           "link": null
         },
         {
-          "dir": 3,
           "name": "any_05",
           "type": "IMAGE",
           "link": null
@@ -9118,7 +9117,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 105,
+      "order": 107,
       "mode": 0,
       "inputs": [
         {
@@ -9169,7 +9168,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 214,
+      "order": 216,
       "mode": 0,
       "inputs": [
         {
@@ -9271,7 +9270,7 @@
         260
       ],
       "flags": {},
-      "order": 219,
+      "order": 221,
       "mode": 0,
       "inputs": [
         {
@@ -9314,7 +9313,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 211,
+      "order": 213,
       "mode": 0,
       "inputs": [
         {
@@ -9364,7 +9363,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 228,
+      "order": 230,
       "mode": 0,
       "inputs": [
         {
@@ -9414,7 +9413,7 @@
         170
       ],
       "flags": {},
-      "order": 158,
+      "order": 160,
       "mode": 0,
       "inputs": [
         {
@@ -9487,7 +9486,7 @@
         110
       ],
       "flags": {},
-      "order": 88,
+      "order": 90,
       "mode": 0,
       "inputs": [
         {
@@ -9542,7 +9541,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 169,
+      "order": 171,
       "mode": 0,
       "inputs": [
         {
@@ -9595,7 +9594,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 204,
+      "order": 206,
       "mode": 0,
       "inputs": [
         {
@@ -9644,117 +9643,6 @@
       }
     },
     {
-      "id": 2791,
-      "type": "2a22b5fb-4cc2-4bc1-bb51-9538b956a224",
-      "pos": [
-        -6330,
-        1280
-      ],
-      "size": [
-        240,
-        150
-      ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 138,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "on_false",
-          "type": "IMAGE",
-          "link": 5145
-        },
-        {
-          "name": "on_true",
-          "type": "IMAGE",
-          "link": 4990
-        },
-        {
-          "label": "b",
-          "name": "values.b",
-          "shape": 7,
-          "type": "FLOAT,INT,BOOLEAN",
-          "link": 4991
-        },
-        {
-          "label": "video_info",
-          "name": "video_info",
-          "type": "VHS_VIDEOINFO",
-          "link": 5147
-        }
-      ],
-      "outputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "links": [
-            5105
-          ]
-        },
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            4994
-          ]
-        },
-        {
-          "label": "add_frames",
-          "name": "INT",
-          "type": "INT",
-          "links": [
-            4995,
-            4996
-          ]
-        },
-        {
-          "label": "total_frames",
-          "name": "count",
-          "type": "INT",
-          "links": [
-            4997,
-            4998
-          ]
-        },
-        {
-          "label": "fps🟦",
-          "name": "fps🟦",
-          "type": "FLOAT",
-          "links": [
-            4999
-          ]
-        },
-        {
-          "label": "loaded frame_count🟦",
-          "name": "frame_count🟦",
-          "type": "INT",
-          "links": [
-            5000,
-            5001
-          ]
-        },
-        {
-          "label": "original_fps",
-          "name": "output",
-          "type": "FLOAT",
-          "links": [
-            5002
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.30.1",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        },
-        "previewExposures": []
-      }
-    },
-    {
       "id": 2689,
       "type": "1ee2e7f1-2eff-4466-b906-b8be232b5127",
       "pos": [
@@ -9768,7 +9656,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 145,
+      "order": 147,
       "mode": 4,
       "inputs": [
         {
@@ -9825,7 +9713,7 @@
         453.5
       ],
       "flags": {},
-      "order": 93,
+      "order": 95,
       "mode": 4,
       "inputs": [
         {
@@ -9960,7 +9848,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 197,
+      "order": 199,
       "mode": 0,
       "inputs": [
         {
@@ -10015,7 +9903,7 @@
         30
       ],
       "flags": {},
-      "order": 217,
+      "order": 219,
       "mode": 0,
       "inputs": [
         {
@@ -10056,7 +9944,7 @@
         30
       ],
       "flags": {},
-      "order": 222,
+      "order": 224,
       "mode": 0,
       "inputs": [
         {
@@ -10166,7 +10054,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 205,
+      "order": 207,
       "mode": 0,
       "inputs": [
         {
@@ -10283,7 +10171,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 203,
+      "order": 205,
       "mode": 0,
       "inputs": [
         {
@@ -10448,7 +10336,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 189,
+      "order": 191,
       "mode": 0,
       "inputs": [
         {
@@ -10521,7 +10409,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 113,
+      "order": 114,
       "mode": 0,
       "inputs": [
         {
@@ -10631,7 +10519,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 108,
+      "order": 110,
       "mode": 0,
       "inputs": [
         {
@@ -10679,7 +10567,7 @@
         240
       ],
       "flags": {},
-      "order": 231,
+      "order": 233,
       "mode": 0,
       "inputs": [
         {
@@ -10761,7 +10649,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 230,
+      "order": 232,
       "mode": 0,
       "inputs": [
         {
@@ -10804,7 +10692,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 177,
+      "order": 179,
       "mode": 0,
       "inputs": [
         {
@@ -10931,7 +10819,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 179,
+      "order": 181,
       "mode": 0,
       "inputs": [
         {
@@ -10980,7 +10868,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 109,
+      "order": 111,
       "mode": 0,
       "inputs": [
         {
@@ -11078,7 +10966,7 @@
         350
       ],
       "flags": {},
-      "order": 199,
+      "order": 201,
       "mode": 0,
       "inputs": [
         {
@@ -11184,7 +11072,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 178,
+      "order": 180,
       "mode": 0,
       "inputs": [
         {
@@ -11233,7 +11121,7 @@
         250
       ],
       "flags": {},
-      "order": 235,
+      "order": 237,
       "mode": 0,
       "inputs": [
         {
@@ -11261,41 +11149,6 @@
       }
     },
     {
-      "id": 1270,
-      "type": "MarkdownNote",
-      "pos": [
-        -7870,
-        290
-      ],
-      "size": [
-        450,
-        900
-      ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 65,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "Model Links",
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "## Model Links\n\n**Wan2.2 Animate fp8**\n[ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n\n[lora](https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22_relight/WanAnimate_relight_lora_fp16.safetensors)\n\nhttps://huggingface.co/lightx2v/Wan2.2-Distill-Loras/resolve/main/wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors\n\n**LTX-2 Model Weights**\n\n- [ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n- [ltx-2-19b-ic-lora-detailer.safetensors](https://huggingface.co/Lightricks/LTX-2-19b-IC-LoRA-Detailer/resolve/main/ltx-2-19b-ic-lora-detailer.safetensors)\n\n**Text Encoder**\n- [Google Gemma 3](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized)\n\nPlease download the entire folder - \n\n- Run: \n 1. cd models/text_encoders\n 2. git clone https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized\n\n*Full documentation can be found [here](https://docs.ltx.video/open-source-model/integration-tools/comfy-ui#text-encoder)\n\n**Model Storage Location**\n\n```\n📂 ComfyUI/\n├── 📂 models/\n│   ├── 📂 text_encoders/\n│   │      ├── gemma-3-12b-it-qat-q4_0-unquantized/model-00001-of-00005.safetensors\n│   ├── 📂 checkpoints/\n│   │      └── ltx-2-19b-dev.safetensors\n│   ├── 📂 loras/\n│   │      ├── ltx-2-19b-ic-lora-detailer.safetensors\n\n```\n\n## Report Issues\nTo report any issues when running this workflow, [go to GitHub](https://github.com/Lightricks/ComfyUI-LTXVideo/issues)\n"
-      ],
-      "widgets_values_named": {
-        "text": "## Model Links\n\n**Wan2.2 Animate fp8**\n[ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n\n[lora](https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22_relight/WanAnimate_relight_lora_fp16.safetensors)\n\nhttps://huggingface.co/lightx2v/Wan2.2-Distill-Loras/resolve/main/wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors\n\n**LTX-2 Model Weights**\n\n- [ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n- [ltx-2-19b-ic-lora-detailer.safetensors](https://huggingface.co/Lightricks/LTX-2-19b-IC-LoRA-Detailer/resolve/main/ltx-2-19b-ic-lora-detailer.safetensors)\n\n**Text Encoder**\n- [Google Gemma 3](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized)\n\nPlease download the entire folder - \n\n- Run: \n 1. cd models/text_encoders\n 2. git clone https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized\n\n*Full documentation can be found [here](https://docs.ltx.video/open-source-model/integration-tools/comfy-ui#text-encoder)\n\n**Model Storage Location**\n\n```\n📂 ComfyUI/\n├── 📂 models/\n│   ├── 📂 text_encoders/\n│   │      ├── gemma-3-12b-it-qat-q4_0-unquantized/model-00001-of-00005.safetensors\n│   ├── 📂 checkpoints/\n│   │      └── ltx-2-19b-dev.safetensors\n│   ├── 📂 loras/\n│   │      ├── ltx-2-19b-ic-lora-detailer.safetensors\n\n```\n\n## Report Issues\nTo report any issues when running this workflow, [go to GitHub](https://github.com/Lightricks/ComfyUI-LTXVideo/issues)\n"
-      },
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
       "id": 1377,
       "type": "PrimitiveStringMultiline",
       "pos": [
@@ -11307,7 +11160,7 @@
         200
       ],
       "flags": {},
-      "order": 66,
+      "order": 65,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -11353,7 +11206,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 171,
+      "order": 173,
       "mode": 4,
       "inputs": [
         {
@@ -11454,7 +11307,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 229,
+      "order": 231,
       "mode": 0,
       "inputs": [
         {
@@ -11512,7 +11365,7 @@
         320
       ],
       "flags": {},
-      "order": 67,
+      "order": 66,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -11562,7 +11415,7 @@
         210
       ],
       "flags": {},
-      "order": 142,
+      "order": 144,
       "mode": 0,
       "inputs": [
         {
@@ -11642,62 +11495,6 @@
       }
     },
     {
-      "id": 159,
-      "type": "PrimitiveInt",
-      "pos": [
-        -6460,
-        460
-      ],
-      "size": [
-        230,
-        90
-      ],
-      "flags": {},
-      "order": 68,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "value",
-          "name": "value",
-          "type": "INT",
-          "widget": {
-            "name": "value"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "label": "INT",
-          "name": "INT",
-          "type": "INT",
-          "links": [
-            1544
-          ]
-        }
-      ],
-      "title": "Width",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.59",
-        "Node name for S&R": "PrimitiveInt",
-        "ue_properties": {
-          "version": "7.4.1",
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        832,
-        "fixed"
-      ],
-      "widgets_values_named": {
-        "value": 832,
-        "fixed": "fixed"
-      },
-      "color": "#ff1414",
-      "bgcolor": "#ff0000"
-    },
-    {
       "id": 2405,
       "type": "INTConstant",
       "pos": [
@@ -11709,7 +11506,7 @@
         60
       ],
       "flags": {},
-      "order": 69,
+      "order": 67,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -11754,7 +11551,7 @@
         90
       ],
       "flags": {},
-      "order": 187,
+      "order": 189,
       "mode": 4,
       "inputs": [
         {
@@ -11806,7 +11603,7 @@
         210
       ],
       "flags": {},
-      "order": 70,
+      "order": 68,
       "mode": 4,
       "inputs": [
         {
@@ -11870,7 +11667,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 223,
+      "order": 225,
       "mode": 0,
       "inputs": [
         {
@@ -11986,7 +11783,7 @@
         220
       ],
       "flags": {},
-      "order": 218,
+      "order": 220,
       "mode": 0,
       "inputs": [
         {
@@ -12060,7 +11857,7 @@
         334
       ],
       "flags": {},
-      "order": 224,
+      "order": 226,
       "mode": 0,
       "inputs": [
         {
@@ -12178,7 +11975,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 225,
+      "order": 227,
       "mode": 0,
       "inputs": [
         {
@@ -12292,7 +12089,7 @@
         130
       ],
       "flags": {},
-      "order": 210,
+      "order": 212,
       "mode": 0,
       "inputs": [
         {
@@ -12347,7 +12144,7 @@
         100
       ],
       "flags": {},
-      "order": 71,
+      "order": 69,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -12379,7 +12176,7 @@
         590
       ],
       "flags": {},
-      "order": 112,
+      "order": 113,
       "mode": 0,
       "inputs": [
         {
@@ -12484,7 +12281,7 @@
         160
       ],
       "flags": {},
-      "order": 232,
+      "order": 234,
       "mode": 0,
       "inputs": [
         {
@@ -12607,7 +12404,7 @@
         130
       ],
       "flags": {},
-      "order": 239,
+      "order": 241,
       "mode": 0,
       "inputs": [
         {
@@ -12663,7 +12460,7 @@
         100
       ],
       "flags": {},
-      "order": 72,
+      "order": 70,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -12695,7 +12492,7 @@
         90
       ],
       "flags": {},
-      "order": 73,
+      "order": 71,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -12727,7 +12524,7 @@
         330
       ],
       "flags": {},
-      "order": 74,
+      "order": 72,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -12769,38 +12566,6 @@
       }
     },
     {
-      "id": 2875,
-      "type": "MarkdownNote",
-      "pos": [
-        -8320,
-        1180
-      ],
-      "size": [
-        220,
-        90
-      ],
-      "flags": {},
-      "order": 75,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "Use to color match Ref_Image. if not needed, reconnect the connections"
-      ],
-      "widgets_values_named": {
-        "text": "Use to color match Ref_Image. if not needed, reconnect the connections"
-      },
-      "color": "#c09430",
-      "bgcolor": "rgba(24,24,27,.9)"
-    },
-    {
       "id": 2860,
       "type": "MarkdownNote",
       "pos": [
@@ -12812,7 +12577,7 @@
         90
       ],
       "flags": {},
-      "order": 76,
+      "order": 73,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -12844,7 +12609,7 @@
         90
       ],
       "flags": {},
-      "order": 77,
+      "order": 74,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -12876,7 +12641,7 @@
         334
       ],
       "flags": {},
-      "order": 180,
+      "order": 182,
       "mode": 0,
       "inputs": [
         {
@@ -12981,126 +12746,6 @@
       }
     },
     {
-      "id": 2852,
-      "type": "StDismas_LoadVideoFFmpegFrames",
-      "pos": [
-        -7080,
-        1360
-      ],
-      "size": [
-        370,
-        521
-      ],
-      "flags": {},
-      "order": 78,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "meta_batch",
-          "shape": 7,
-          "type": "VHS_BatchManager",
-          "link": null
-        },
-        {
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            5144,
-            5145
-          ]
-        },
-        {
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": [
-            5146
-          ]
-        },
-        {
-          "name": "video_info",
-          "type": "VHS_VIDEOINFO",
-          "links": [
-            5147
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "svyatojdismas/ComfyUI-StDismas",
-        "ver": "57965531d8fb4dd6a3e67212d96f246b1e9025d4",
-        "Node name for S&R": "StDismas_LoadVideoFFmpegFrames",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": {
-        "video": "2026-08-25 23-33-23.mp4",
-        "force_rate": 20,
-        "custom_width": 0,
-        "custom_height": 0,
-        "frame_load_cap": 81,
-        "skip_first_frames": 110,
-        "select_every_nth": 1,
-        "format": "AnimateDiff",
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "2026-08-25 23-33-23.mp4",
-            "subfolder": "",
-            "type": "input",
-            "format": "video/mp4",
-            "force_rate": 20,
-            "frame_load_cap": 81,
-            "skip_first_frames": 110,
-            "select_every_nth": 1,
-            "custom_width": 0,
-            "custom_height": 0
-          }
-        }
-      },
-      "widgets_values_named": {
-        "video": "2026-08-25 23-33-23.mp4",
-        "force_rate": 20,
-        "custom_width": 0,
-        "custom_height": 0,
-        "frame_load_cap": 81,
-        "skip_first_frames": 110,
-        "select_every_nth": 1,
-        "format": "AnimateDiff",
-        "videopreview": {
-          "hidden": false,
-          "paused": false,
-          "params": {
-            "filename": "2026-08-25 23-33-23.mp4",
-            "subfolder": "",
-            "type": "input",
-            "format": "video/mp4",
-            "force_rate": 20,
-            "frame_load_cap": 81,
-            "skip_first_frames": 110,
-            "select_every_nth": 1,
-            "custom_width": 0,
-            "custom_height": 0
-          }
-        }
-      }
-    },
-    {
       "id": 2627,
       "type": "INTConstant",
       "pos": [
@@ -13112,7 +12757,7 @@
         60
       ],
       "flags": {},
-      "order": 79,
+      "order": 75,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -13158,7 +12803,7 @@
         90
       ],
       "flags": {},
-      "order": 80,
+      "order": 76,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -13201,7 +12846,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 87,
+      "order": 89,
       "mode": 0,
       "inputs": [
         {
@@ -13270,7 +12915,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 190,
+      "order": 192,
       "mode": 0,
       "inputs": [
         {
@@ -13419,7 +13064,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 174,
+      "order": 176,
       "mode": 0,
       "inputs": [
         {
@@ -13466,7 +13111,7 @@
         60
       ],
       "flags": {},
-      "order": 81,
+      "order": 77,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -13511,7 +13156,7 @@
         150
       ],
       "flags": {},
-      "order": 82,
+      "order": 78,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -13546,7 +13191,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 117,
+      "order": 116,
       "mode": 0,
       "inputs": [
         {
@@ -13608,7 +13253,7 @@
         814
       ],
       "flags": {},
-      "order": 238,
+      "order": 240,
       "mode": 0,
       "inputs": [
         {
@@ -13824,7 +13469,7 @@
         446
       ],
       "flags": {},
-      "order": 237,
+      "order": 239,
       "mode": 0,
       "inputs": [
         {
@@ -13945,7 +13590,7 @@
         603
       ],
       "flags": {},
-      "order": 127,
+      "order": 128,
       "mode": 0,
       "inputs": [
         {
@@ -14064,7 +13709,7 @@
         607
       ],
       "flags": {},
-      "order": 201,
+      "order": 203,
       "mode": 0,
       "inputs": [
         {
@@ -14183,7 +13828,7 @@
         612
       ],
       "flags": {},
-      "order": 221,
+      "order": 223,
       "mode": 0,
       "inputs": [
         {
@@ -14301,12 +13946,12 @@
       ],
       "size": [
         230,
-        254
+        94
       ],
       "flags": {
         "collapsed": true
       },
-      "order": 182,
+      "order": 184,
       "mode": 4,
       "inputs": [
         {
@@ -14418,7 +14063,7 @@
         442
       ],
       "flags": {},
-      "order": 172,
+      "order": 174,
       "mode": 0,
       "inputs": [
         {
@@ -14518,6 +14163,413 @@
           }
         }
       }
+    },
+    {
+      "id": 2852,
+      "type": "StDismas_LoadVideoFFmpegFrames",
+      "pos": [
+        -7080,
+        1360
+      ],
+      "size": [
+        370,
+        521
+      ],
+      "flags": {},
+      "order": 79,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "meta_batch",
+          "shape": 7,
+          "type": "VHS_BatchManager",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5144,
+            5145
+          ]
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            5146
+          ]
+        },
+        {
+          "name": "video_info",
+          "type": "VHS_VIDEOINFO",
+          "links": [
+            5147
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "svyatojdismas/ComfyUI-StDismas",
+        "ver": "57965531d8fb4dd6a3e67212d96f246b1e9025d4",
+        "Node name for S&R": "StDismas_LoadVideoFFmpegFrames",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": {
+        "video": "2026-08-25 23-33-23.mp4",
+        "force_rate": 0,
+        "custom_width": 0,
+        "custom_height": 0,
+        "frame_load_cap": 0,
+        "skip_first_frames": 0,
+        "select_every_nth": 1,
+        "format": "None",
+        "videopreview": {
+          "hidden": false,
+          "paused": false,
+          "params": {
+            "filename": "2026-08-25 23-33-23.mp4",
+            "subfolder": "",
+            "type": "input",
+            "format": "video/mp4",
+            "force_rate": 0,
+            "frame_load_cap": 0,
+            "skip_first_frames": 0,
+            "select_every_nth": 1,
+            "custom_width": 0,
+            "custom_height": 0
+          }
+        }
+      },
+      "widgets_values_named": {
+        "video": "2026-08-25 23-33-23.mp4",
+        "force_rate": 0,
+        "custom_width": 0,
+        "custom_height": 0,
+        "frame_load_cap": 0,
+        "skip_first_frames": 0,
+        "select_every_nth": 1,
+        "format": "None",
+        "videopreview": {
+          "hidden": false,
+          "paused": false,
+          "params": {
+            "filename": "2026-08-25 23-33-23.mp4",
+            "subfolder": "",
+            "type": "input",
+            "format": "video/mp4",
+            "force_rate": 0,
+            "frame_load_cap": 0,
+            "skip_first_frames": 0,
+            "select_every_nth": 1,
+            "custom_width": 0,
+            "custom_height": 0
+          }
+        }
+      }
+    },
+    {
+      "id": 2791,
+      "type": "2a22b5fb-4cc2-4bc1-bb51-9538b956a224",
+      "pos": [
+        -6330,
+        1280
+      ],
+      "size": [
+        330,
+        150
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 140,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "on_false",
+          "type": "IMAGE",
+          "link": 5145
+        },
+        {
+          "name": "on_true",
+          "type": "IMAGE",
+          "link": 4990
+        },
+        {
+          "label": "b",
+          "name": "values.b",
+          "shape": 7,
+          "type": "FLOAT,INT,BOOLEAN",
+          "link": 4991
+        },
+        {
+          "label": "video_info",
+          "name": "video_info",
+          "type": "VHS_VIDEOINFO",
+          "link": 5147
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            5105
+          ]
+        },
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            4994
+          ]
+        },
+        {
+          "label": "add_frames",
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            4995,
+            4996
+          ]
+        },
+        {
+          "label": "total_frames",
+          "name": "count",
+          "type": "INT",
+          "links": [
+            4997,
+            4998
+          ]
+        },
+        {
+          "label": "fps🟦",
+          "name": "fps🟦",
+          "type": "FLOAT",
+          "links": [
+            4999
+          ]
+        },
+        {
+          "label": "loaded frame_count🟦",
+          "name": "frame_count🟦",
+          "type": "INT",
+          "links": [
+            5000,
+            5001
+          ]
+        },
+        {
+          "label": "original_fps",
+          "name": "output",
+          "type": "FLOAT",
+          "links": [
+            5002
+          ]
+        }
+      ],
+      "title": "Video Processing for Wan compatibility",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.1",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        },
+        "previewExposures": []
+      }
+    },
+    {
+      "id": 2880,
+      "type": "MarkdownNote",
+      "pos": [
+        -5900,
+        1090
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 80,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "You can upload your own **custom face expression** video e.g. if the source is of poor quality\n"
+      ],
+      "widgets_values_named": {
+        "text": "You can upload your own **custom face expression** video e.g. if the source is of poor quality\n"
+      },
+      "color": "#c09430",
+      "bgcolor": "rgba(24,24,27,.9)"
+    },
+    {
+      "id": 2879,
+      "type": "MarkdownNote",
+      "pos": [
+        -5900,
+        950
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 81,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "For very short videos ~<30 frames\n"
+      ],
+      "widgets_values_named": {
+        "text": "For very short videos ~<30 frames\n"
+      },
+      "color": "#c09430",
+      "bgcolor": "rgba(24,24,27,.9)"
+    },
+    {
+      "id": 159,
+      "type": "PrimitiveInt",
+      "pos": [
+        -6460,
+        460
+      ],
+      "size": [
+        230,
+        90
+      ],
+      "flags": {},
+      "order": 82,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "value",
+          "name": "value",
+          "type": "INT",
+          "widget": {
+            "name": "value"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "label": "INT",
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            1544
+          ]
+        }
+      ],
+      "title": "Width",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.59",
+        "Node name for S&R": "PrimitiveInt",
+        "ue_properties": {
+          "version": "7.4.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        1024,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "value": 1024,
+        "fixed": "fixed"
+      },
+      "color": "#ff1414",
+      "bgcolor": "#ff0000"
+    },
+    {
+      "id": 1270,
+      "type": "MarkdownNote",
+      "pos": [
+        -7900,
+        290
+      ],
+      "size": [
+        450,
+        900
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 83,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Model Links",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.4.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "## Model Links\n\n**Wan2.2 Animate fp8**\n[ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n\n[lora](https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22_relight/WanAnimate_relight_lora_fp16.safetensors)\n\nhttps://huggingface.co/lightx2v/Wan2.2-Distill-Loras/resolve/main/wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors\n\n**LTX-2 Model Weights**\n\n- [ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n- [ltx-2-19b-ic-lora-detailer.safetensors](https://huggingface.co/Lightricks/LTX-2-19b-IC-LoRA-Detailer/resolve/main/ltx-2-19b-ic-lora-detailer.safetensors)\n\n**Text Encoder**\n- [Google Gemma 3](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized)\n\nPlease download the entire folder - \n\n- Run: \n 1. cd models/text_encoders\n 2. git clone https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized\n\n*Full documentation can be found [here](https://docs.ltx.video/open-source-model/integration-tools/comfy-ui#text-encoder)\n\n**Model Storage Location**\n\n```\n📂 ComfyUI/\n├── 📂 models/\n│   ├── 📂 text_encoders/\n│   │      ├── gemma-3-12b-it-qat-q4_0-unquantized/model-00001-of-00005.safetensors\n│   ├── 📂 checkpoints/\n│   │      └── ltx-2-19b-dev.safetensors\n│   ├── 📂 loras/\n│   │      ├── ltx-2-19b-ic-lora-detailer.safetensors\n\n```\n\n## Report Issues\nTo report any issues when running this workflow, [go to GitHub](https://github.com/Lightricks/ComfyUI-LTXVideo/issues)\n"
+      ],
+      "widgets_values_named": {
+        "text": "## Model Links\n\n**Wan2.2 Animate fp8**\n[ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n\n[lora](https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22_relight/WanAnimate_relight_lora_fp16.safetensors)\n\nhttps://huggingface.co/lightx2v/Wan2.2-Distill-Loras/resolve/main/wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors\n\n**LTX-2 Model Weights**\n\n- [ltx-2-19b-dev.safetensors](https://huggingface.co/Lightricks/LTX-2/resolve/main/ltx-2-19b-dev.safetensors)\n- [ltx-2-19b-ic-lora-detailer.safetensors](https://huggingface.co/Lightricks/LTX-2-19b-IC-LoRA-Detailer/resolve/main/ltx-2-19b-ic-lora-detailer.safetensors)\n\n**Text Encoder**\n- [Google Gemma 3](https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized)\n\nPlease download the entire folder - \n\n- Run: \n 1. cd models/text_encoders\n 2. git clone https://huggingface.co/google/gemma-3-12b-it-qat-q4_0-unquantized\n\n*Full documentation can be found [here](https://docs.ltx.video/open-source-model/integration-tools/comfy-ui#text-encoder)\n\n**Model Storage Location**\n\n```\n📂 ComfyUI/\n├── 📂 models/\n│   ├── 📂 text_encoders/\n│   │      ├── gemma-3-12b-it-qat-q4_0-unquantized/model-00001-of-00005.safetensors\n│   ├── 📂 checkpoints/\n│   │      └── ltx-2-19b-dev.safetensors\n│   ├── 📂 loras/\n│   │      ├── ltx-2-19b-ic-lora-detailer.safetensors\n\n```\n\n## Report Issues\nTo report any issues when running this workflow, [go to GitHub](https://github.com/Lightricks/ComfyUI-LTXVideo/issues)\n"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2875,
+      "type": "MarkdownNote",
+      "pos": [
+        -8320,
+        1180
+      ],
+      "size": [
+        220,
+        90
+      ],
+      "flags": {},
+      "order": 84,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Use to color match Ref_Image. if not needed, reconnect the connections"
+      ],
+      "widgets_values_named": {
+        "text": "Use to color match Ref_Image. if not needed, reconnect the connections"
+      },
+      "color": "#c09430",
+      "bgcolor": "rgba(24,24,27,.9)"
     }
   ],
   "links": [
@@ -16943,7 +16995,7 @@
         "version": 1,
         "state": {
           "lastGroupId": 67,
-          "lastNodeId": 2877,
+          "lastNodeId": 2880,
           "lastLinkId": 5191,
           "lastRerouteId": 3
         },
@@ -19667,7 +19719,7 @@
         "version": 1,
         "state": {
           "lastGroupId": 67,
-          "lastNodeId": 2877,
+          "lastNodeId": 2880,
           "lastLinkId": 5191,
           "lastRerouteId": 3
         },
@@ -20589,7 +20641,7 @@
         "version": 1,
         "state": {
           "lastGroupId": 67,
-          "lastNodeId": 2877,
+          "lastNodeId": 2880,
           "lastLinkId": 5191,
           "lastRerouteId": 3
         },
@@ -21507,7 +21559,7 @@
         "version": 1,
         "state": {
           "lastGroupId": 67,
-          "lastNodeId": 2877,
+          "lastNodeId": 2880,
           "lastLinkId": 5191,
           "lastRerouteId": 3
         },
@@ -24633,7 +24685,7 @@
         "version": 1,
         "state": {
           "lastGroupId": 67,
-          "lastNodeId": 2877,
+          "lastNodeId": 2880,
           "lastLinkId": 5191,
           "lastRerouteId": 3
         },
@@ -25959,13 +26011,13 @@
         "version": 1,
         "state": {
           "lastGroupId": 67,
-          "lastNodeId": 2877,
+          "lastNodeId": 2880,
           "lastLinkId": 5191,
           "lastRerouteId": 3
         },
         "revision": 0,
         "config": {},
-        "name": "Input Video Processing",
+        "name": "Video Processing for Wan compatibility",
         "inputNode": {
           "id": -10,
           "bounding": [
@@ -27453,10 +27505,10 @@
       }
     },
     "ds": {
-      "scale": 0.424097618372485,
+      "scale": 0.7513148009015785,
       "offset": [
-        8098.739589242326,
-        443.3419332399839
+        7153.876677699641,
+        635.4392680197809
       ]
     }
   },
