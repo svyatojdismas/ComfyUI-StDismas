@@ -106,17 +106,22 @@ function setWidgetVisible(widget, visible) {
 
   if (!widget.__stdismasVisibility) {
     widget.__stdismasVisibility = {
-      type: widget.type,
       computeSize: widget.computeSize,
     };
   }
 
   const original = widget.__stdismasVisibility;
   widget.hidden = !visible;
-  widget.type = visible ? original.type : "hidden";
-  widget.computeSize = visible
-    ? original.computeSize
-    : () => [0, -4];
+  widget.serialize = true;
+  if (visible) {
+    if (original.computeSize) widget.computeSize = original.computeSize;
+    else delete widget.computeSize;
+  } else {
+    // Keep the original widget type (STRING/INT/etc.). Mutating it to a
+    // synthetic "hidden" type can shift hitboxes and tooltips in modern
+    // ComfyUI frontends, making the next widget appear to have the wrong type.
+    widget.computeSize = () => [0, -4];
+  }
 }
 
 function resizeNode(node) {
