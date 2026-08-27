@@ -2,19 +2,17 @@
 
 Custom nodes for ComfyUI focused on stable batch/video cropping, mask-based compositing, optional face tracking, and practical video loading helpers.
 
-<p align="center"><a href="README.md">English</a> | <a href="README.ru.md">Russian</a></p>
-
-## Documentation
-
-The detailed documentation is available in English:
-
-- [Batch Crop / Uncrop Advanced](nodes/README_batch_crop_uncrop_by_mask_advanced_en.md)
+[English](README.md) | [Russian](README.ru.md)
 
 ## Batch crop / uncrop
 
 The advanced crop nodes support universal mask tracking, optional face detection, identity-reference tracking, exact affine uncrop through `crop_metadata`, and compatible rectangular uncrop through `BOUNDING_BOX`.
 
-Face dependencies are loaded only when `tracking_mode=face_detection`; mask workflows do not require Ultralytics or InsightFace.
+Face dependencies are loaded only when `tracking_mode=face_detection`; mask workflows do not require Ultralytics or InsightFace. Thanks [Carasibana](https://github.com/Carasibana/ComfyUI-H3-FaceRefine) for this implementation.
+
+The detailed documentation is available in English:
+
+- [Batch Crop / Uncrop Advanced](nodes/README_batch_crop_uncrop_by_mask_advanced_en.md)
 
 ## Optional VideoHelperSuite integration
 
