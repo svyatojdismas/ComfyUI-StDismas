@@ -4,4 +4,4 @@ insightface
 
 # Install exactly one ONNX Runtime build separately:
 # onnxruntime      (CPU, safest for low-VRAM systems)
-onnxruntime-gpu  #(CUDA)
+# onnxruntime-gpu  (CUDA)
