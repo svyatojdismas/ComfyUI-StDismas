@@ -2,11 +2,11 @@
 
 Пакет нод для ComfyUI с покадровым кадрированием изображений и видео, mask-based compositing, optional face tracking и вспомогательными VHS-инструментами.
 
+[English](README.md) | [Russian](README.ru.md)
+
 ## Документация
 
 - [Подробная документация Batch Image Crop / Uncrop By Mask Advanced](nodes/README_batch_crop_uncrop_by_mask_advanced_ru.md)
-- [English documentation](nodes/README_batch_crop_uncrop_by_mask_advanced_en.md)
-- [Основная страница проекта](README.md)
 
 ## Кратко о Crop / Uncrop
 

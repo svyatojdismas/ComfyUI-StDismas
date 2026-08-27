@@ -2,13 +2,13 @@
 
 Custom nodes for ComfyUI focused on stable batch/video cropping, mask-based compositing, optional face tracking, and practical video loading helpers.
 
+[English](README.md) | [Russian](README.ru.md)
+
 ## Documentation
 
-The default documentation is in English:
+The detailed documentation is available in English:
 
-- [Batch Crop / Uncrop Advanced — English](nodes/README_batch_crop_uncrop_by_mask_advanced_en.md)
-- [Русская документация](README.ru.md)
-- [Подробная русская документация Crop / Uncrop](nodes/README_batch_crop_uncrop_by_mask_advanced_ru.md)
+- [Batch Crop / Uncrop Advanced](nodes/README_batch_crop_uncrop_by_mask_advanced_en.md)
 
 ## Batch crop / uncrop
 

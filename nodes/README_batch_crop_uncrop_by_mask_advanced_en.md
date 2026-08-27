@@ -2,6 +2,8 @@
 
 These nodes are part of [ComfyUI-StDismas](https://github.com/svyatojdismas/ComfyUI-StDismas). They crop image/video batches frame by frame and put processed crops back into the original frames.
 
+[English](README_batch_crop_uncrop_by_mask_advanced_en.md) | [Russian](README_batch_crop_uncrop_by_mask_advanced_ru.md)
+
 ## Goals and capabilities
 
 The pair is designed for a stable workflow:

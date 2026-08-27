@@ -2,6 +2,8 @@
 
 Ноды входят в [ComfyUI-StDismas](https://github.com/svyatojdismas/ComfyUI-StDismas) и предназначены для покадрового кадрирования изображений и видео с последующей точной вставкой обработанного crop обратно в исходный кадр.
 
+[English](README_batch_crop_uncrop_by_mask_advanced_en.md) | [Russian](README_batch_crop_uncrop_by_mask_advanced_ru.md)
+
 ## Цели и возможности
 
 Связка решает две основные задачи:
