@@ -154,17 +154,48 @@ class ExpandMaskBySides:
     CATEGORY = "StDismas/Mask"
 
     def expand_mask(self, mask, expand_top, expand_bottom, expand_left, expand_right):
-        mask_4d = _ensure_mask_4d(mask).clamp_(0.0, 1.0)
+        mask_4d = _ensure_mask_4d(mask).clamp(0.0, 1.0)
 
         if expand_top == 0 and expand_bottom == 0 and expand_left == 0 and expand_right == 0:
             return (_restore_mask_dims(mask_4d, mask),)
 
-        kernel_h = expand_top + expand_bottom + 1
-        kernel_w = expand_left + expand_right + 1
+        expanded = mask_4d
 
-        padded = F.pad(mask_4d, (expand_left, expand_right, expand_top, expand_bottom), mode="constant", value=0.0)
-        expanded = F.max_pool2d(padded, kernel_size=(kernel_h, kernel_w), stride=1)
-        expanded = expanded.clamp_(0.0, 1.0)
+        # A rectangular maximum filter is separable. Keeping the horizontal and
+        # vertical passes independent avoids the very expensive 2D pooling
+        # kernel that previously made video batches appear to hang.
+        if expand_left > 0 or expand_right > 0:
+            kernel_w = expand_left + expand_right + 1
+            # Pooling padding is intentionally reversed: left-side expansion
+            # needs source values available to output pixels on their left.
+            padded = F.pad(
+                expanded,
+                (expand_right, expand_left, 0, 0),
+                mode="constant",
+                value=0.0,
+            )
+            expanded = F.max_pool2d(
+                padded,
+                kernel_size=(1, kernel_w),
+                stride=1,
+            )
+
+        if expand_top > 0 or expand_bottom > 0:
+            kernel_h = expand_top + expand_bottom + 1
+            # The same reversed-padding relationship applies vertically.
+            padded = F.pad(
+                expanded,
+                (0, 0, expand_bottom, expand_top),
+                mode="constant",
+                value=0.0,
+            )
+            expanded = F.max_pool2d(
+                padded,
+                kernel_size=(kernel_h, 1),
+                stride=1,
+            )
+
+        expanded = expanded.clamp(0.0, 1.0)
 
         return (_restore_mask_dims(expanded, mask),)
 
