@@ -24,3 +24,9 @@
 - пресеты полного диапазона BT.709 `video/h264-mp4-pc` и `video/nvenc_h264-mp4-pc` для стандартной VHS-ноды `Video Combine`.
 
 Интеграция необязательна. Если VideoHelperSuite отсутствует или несовместим, остальные ноды StDismas продолжают загружаться обычным образом.
+
+## Installation
+Clone into ComfyUI/custom_nodes/ and restart ComfyUI:
+```
+git clone https://github.com/svyatojdismas/ComfyUI-StDismas.git
+```
