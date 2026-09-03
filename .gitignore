@@ -23,4 +23,7 @@ Thumbs.db
 # Cache
 .cache/
 
+# Tests
+tests/
+
 AGENTS.md
