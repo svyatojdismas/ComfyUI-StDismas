@@ -29,6 +29,8 @@ rest of the StDismas node pack continues to load normally.
 
 ## MMH3 Tile Preview
 
+![MMH3 Tile Preview showing the video and tile diagram](docs/images/mmh3-tile-preview.png)
+
 `MMH3 Tile Preview (StDismas)` shows the spatial tile grid, sampling overlaps and fade, stitch weights, and temporal chunks for `MMH3 Ultimate Upscale`. It renders a CPU diagram or a playable preview in the node and returns the diagram as `IMAGE` and a `STRING` report with coordinates, sizes, and frame ranges.
 
 1. Branch `spatial_split_param`, `temporal_split_param`, and `latent_upscale_param` from the same [MMH3 parameter nodes](https://github.com/bbaudio-2025/Comfyui-MMH3-UltimateUpscale) into both nodes. The preview reads the resolved settings, including equal tile sizes from newer versions.

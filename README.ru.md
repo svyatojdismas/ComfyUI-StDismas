@@ -27,6 +27,8 @@
 
 ## Превью тайлов MMH3
 
+![MMH3 Tile Preview с видео и диаграммой тайлов](docs/images/mmh3-tile-preview.png)
+
 `MMH3 Tile Preview (StDismas)` строит схему тайлов, перекрытий и зон fade, показывает веса сшивки и таймлайн чанков `MMH3 Ultimate Upscale`. Прямо в ноде можно посмотреть схему или воспроизвести видео. На выходах доступны схема `IMAGE` и текстовый `layout_report` с координатами, размерами и диапазонами кадров.
 
 1. Разведи `spatial_split_param`, `temporal_split_param` и `latent_upscale_param` из одних и тех же [нод MMH3](https://github.com/bbaudio-2025/Comfyui-MMH3-UltimateUpscale) в апскейлер и в превью. Нода читает уже рассчитанные настройки, включая режим равных тайлов в новых версиях.
