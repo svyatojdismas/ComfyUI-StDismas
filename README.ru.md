@@ -27,7 +27,9 @@
 
 ## Превью тайлов MMH3
 
-![MMH3 Tile Preview с видео и диаграммой тайлов](docs/images/mmh3-tile-preview.png)
+<p align="center">
+  <img src="docs/images/mmh3-tile-preview.png" alt="MMH3 Tile Preview с видео и диаграммой тайлов">
+</p>
 
 `MMH3 Tile Preview (StDismas)` строит схему тайлов, перекрытий и зон fade, показывает веса сшивки и таймлайн чанков `MMH3 Ultimate Upscale`. Прямо в ноде можно посмотреть схему или воспроизвести видео. На выходах доступны схема `IMAGE` и текстовый `layout_report` с координатами, размерами и диапазонами кадров.
 

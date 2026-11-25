@@ -29,7 +29,9 @@ rest of the StDismas node pack continues to load normally.
 
 ## MMH3 Tile Preview
 
-![MMH3 Tile Preview showing the video and tile diagram](docs/images/mmh3-tile-preview.png)
+<p align="center">
+  <img src="docs/images/mmh3-tile-preview.png" alt="MMH3 Tile Preview showing the video and tile diagram">
+</p>
 
 `MMH3 Tile Preview (StDismas)` shows the spatial tile grid, sampling overlaps and fade, stitch weights, and temporal chunks for `MMH3 Ultimate Upscale`. It renders a CPU diagram or a playable preview in the node and returns the diagram as `IMAGE` and a `STRING` report with coordinates, sizes, and frame ranges.
 
