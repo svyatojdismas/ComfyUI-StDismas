@@ -24,6 +24,7 @@ Thumbs.db
 .cache/
 
 # Tests
-tests/
+tests/*
+!tests/test_mmh3_tile_preview.py
 
 AGENTS.md
